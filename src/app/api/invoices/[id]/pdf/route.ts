@@ -8,24 +8,36 @@ function fmt(n: number) { return n.toFixed(2); }
 function esc(s: string | null | undefined) {
   return (s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
-/** Format YYYY-MM-DD as DD/MM/YYYY without timezone conversion */
-function fmtDate(d: string | null | undefined): string {
-  if (!d) return "";
-  const m = d.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
-  return d;
+/** Normalise YYYYMMDD / YYYY-MM-DD / DD/MM/YYYY → YYYY-MM-DD */
+function toISO(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+  const dm = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dm) return `${dm[3]}-${dm[2].padStart(2,"0")}-${dm[1].padStart(2,"0")}`;
+  return null;
 }
-/** Calculate due date as DD/MM/YYYY */
+/** Format any date as DD-MM-YYYY */
+function fmtDate(d: string | null | undefined): string {
+  const iso = toISO(d);
+  if (!iso) return "";
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+/** Calculate due date as DD-MM-YYYY */
 function calcDue(invoiceDate: string | null | undefined, days: number | null | undefined): string {
   if (!invoiceDate || days == null) return "";
-  const m = invoiceDate.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const iso = toISO(invoiceDate);
+  if (!iso) return "";
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return "";
   const base = new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
   if (isNaN(base.getTime())) return "";
   base.setUTCDate(base.getUTCDate() + Math.round(days));
   const d = base.getUTCDate().toString().padStart(2, "0");
   const mo = (base.getUTCMonth() + 1).toString().padStart(2, "0");
-  return `${d}/${mo}/${base.getUTCFullYear()}`;
+  return `${d}-${mo}-${base.getUTCFullYear()}`;
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -62,14 +74,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // Customer address from first sales row (comes from CSV cols 3-8)
   const first = saleRows[0];
   const custName = esc(first?.customerName);
-  const addr1 = esc(first?.address1);
+  // Only include addr1 if it's different from customerName (sometimes CSV repeats it)
+  const addr1Raw = first?.address1 && first.address1 !== first.customerName ? esc(first.address1) : "";
   const addr2 = esc(first?.address2);
   const town = esc(first?.town);
   const country = esc(first?.country);
   const postcode = esc(first?.postcode);
 
   // Build address lines (skip empty)
-  const addrLines = [custName, addr1, addr2, town, country, postcode]
+  const addrLines = [addr1Raw, addr2, town, country, postcode]
     .filter(Boolean)
     .map(l => `<div>${l}</div>`)
     .join("");

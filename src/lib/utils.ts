@@ -5,39 +5,58 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "-";
-  try {
-    const clean = dateStr.trim();
-    // YYYY-MM-DD — parse parts directly to avoid timezone shifting
-    const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) {
-      return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
-    }
-    // Already DD/MM/YYYY
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) return clean;
-    // Fallback
-    const d = new Date(clean);
-    if (isNaN(d.getTime())) return clean;
-    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  } catch {
-    return dateStr;
+/**
+ * Normalise any date string to YYYY-MM-DD for internal storage/comparison.
+ * Handles: YYYYMMDD, YYYY-MM-DD, DD/MM/YYYY
+ */
+export function normaliseDateToISO(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // YYYYMMDD (no separators) e.g. 20260313
+  if (/^\d{8}$/.test(s)) {
+    return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
   }
+  // DD/MM/YYYY
+  const dmY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmY) return `${dmY[3]}-${dmY[2].padStart(2, "0")}-${dmY[1].padStart(2, "0")}`;
+  return s;
 }
 
-/** Calculate due date from an invoice date string + number of days */
-export function calcDueDate(invoiceDate: string | null | undefined, days: number | null | undefined): string {
+/**
+ * Format any date string as DD-MM-YYYY for display.
+ * Handles: YYYY-MM-DD, YYYYMMDD, DD/MM/YYYY
+ */
+export function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "-";
+  const iso = normaliseDateToISO(dateStr);
+  if (!iso) return "-";
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return dateStr;
+}
+
+/**
+ * Calculate due date (DD-MM-YYYY) from invoice date + numb2 days.
+ * Works with any of the supported date formats.
+ */
+export function calcDueDate(
+  invoiceDate: string | null | undefined,
+  days: number | null | undefined
+): string {
   if (!invoiceDate || days == null) return "-";
   try {
-    const isoMatch = invoiceDate.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!isoMatch) return "-";
-    // Use UTC to avoid DST shifts
-    const base = new Date(Date.UTC(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3])));
+    const iso = normaliseDateToISO(invoiceDate);
+    if (!iso) return "-";
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return "-";
+    const base = new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
+    if (isNaN(base.getTime())) return "-";
     base.setUTCDate(base.getUTCDate() + Math.round(days));
     const d = base.getUTCDate().toString().padStart(2, "0");
-    const m = (base.getUTCMonth() + 1).toString().padStart(2, "0");
-    const y = base.getUTCFullYear();
-    return `${d}/${m}/${y}`;
+    const mo = (base.getUTCMonth() + 1).toString().padStart(2, "0");
+    return `${d}-${mo}-${base.getUTCFullYear()}`;
   } catch {
     return "-";
   }

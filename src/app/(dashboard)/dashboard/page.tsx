@@ -1,10 +1,9 @@
 import { db } from "@/db";
-import { customers, invoices } from "@/db/schema";
-import { formatDate } from "@/lib/utils";
+import { customers, invoices, sales } from "@/db/schema";
+import { formatDate, calcDueDate } from "@/lib/utils";
 import Link from "next/link";
 import { Users, FileText, AlertCircle, CheckCircle } from "lucide-react";
-import { eq, inArray, desc } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { eq, inArray, desc, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +15,20 @@ export default async function DashboardPage() {
     db.select({ count: sql<number>`count(*)` }).from(invoices).where(eq(invoices.printer, 2)).then(r => r[0].count),
     db.select().from(invoices).orderBy(desc(invoices.id)).limit(10),
   ]);
+
+  // For each invoice, get numb2 from the first matching sale row (for due date calc)
+  const numb2Map: Record<number, number | null> = {};
+  await Promise.all(
+    latestInvoices.map(async (inv) => {
+      if (!inv.dueDate) {
+        const [s] = await db.select({ numb2: sales.numb2 })
+          .from(sales)
+          .where(eq(sales.invoiceNumber, inv.invoiceNumber))
+          .limit(1);
+        numb2Map[inv.id] = s?.numb2 ?? null;
+      }
+    })
+  );
 
   const stats = [
     { label: "Total Customers", value: Number(customerCount).toLocaleString(), icon: Users, color: "text-purple-600", bg: "bg-purple-50", href: "/customers" },
@@ -67,7 +80,11 @@ export default async function DashboardPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{inv.customerAccount}</td>
                   <td className="px-4 py-3 text-gray-700">{inv.invoiceNumber}</td>
                   <td className="px-4 py-3 text-gray-600">{formatDate(inv.invoiceDate)}</td>
-                  <td className="px-4 py-3 text-gray-600">{formatDate(inv.dueDate)}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {inv.dueDate
+                      ? formatDate(inv.dueDate)
+                      : calcDueDate(inv.invoiceDate, numb2Map[inv.id])}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${inv.printer === 2 ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
                       {inv.printer === 2 ? "Printed" : "Unprinted"}

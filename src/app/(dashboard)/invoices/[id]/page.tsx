@@ -238,7 +238,8 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
               <p className="font-bold text-gray-900 text-sm">{sales[0].customerName}</p>
             )}
             <div className="text-xs text-gray-600 leading-relaxed mt-1">
-              {sales[0]?.address1 && <p>{sales[0].address1}</p>}
+              {/* Only show address1 if it differs from customerName */}
+              {sales[0]?.address1 && sales[0].address1 !== sales[0].customerName && <p>{sales[0].address1}</p>}
               {sales[0]?.address2 && <p>{sales[0].address2}</p>}
               {sales[0]?.town && <p>{sales[0].town}</p>}
               {sales[0]?.country && <p>{sales[0].country}</p>}

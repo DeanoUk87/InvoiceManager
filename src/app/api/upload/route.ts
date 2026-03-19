@@ -196,7 +196,13 @@ function toFloat(val: string | undefined): number | null {
 function parseDate(val: string | undefined): string | null {
   if (!val || val.trim() === "") return null;
   const clean = val.trim();
+  // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  // YYYYMMDD (no separators) e.g. 20260313
+  if (/^\d{8}$/.test(clean)) {
+    return `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`;
+  }
+  // DD/MM/YYYY
   const dmY = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (dmY) return `${dmY[3]}-${dmY[2].padStart(2, "0")}-${dmY[1].padStart(2, "0")}`;
   return clean;

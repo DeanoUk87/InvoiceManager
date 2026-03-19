@@ -88,11 +88,22 @@ export async function POST() {
   }
 }
 
+/** Normalise any date string to YYYY-MM-DD */
+function toISO(raw: string): string | null {
+  const s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+  const dm = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dm) return `${dm[3]}-${dm[2].padStart(2,"0")}-${dm[1].padStart(2,"0")}`;
+  return null;
+}
+
 /** Calculate due date as YYYY-MM-DD using UTC to avoid timezone shifts */
 function calcDueDateISO(invoiceDate: string | null | undefined, days: number): string | null {
   if (!invoiceDate) return null;
-  const clean = invoiceDate.trim();
-  const m = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const iso = toISO(invoiceDate);
+  if (!iso) return null;
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return null;
   const base = new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
   if (isNaN(base.getTime())) return null;

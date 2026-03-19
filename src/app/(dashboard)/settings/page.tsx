@@ -96,13 +96,12 @@ export default function SettingsPage() {
 
         {/* Invoice Settings */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Invoice Configuration</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {field("invoiceDueDate", "Due Days (from invoice date)", "number")}
+          <h2 className="text-base font-semibold text-gray-900 mb-2">Invoice Configuration</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Fuel surcharge %, VAT %, and due days are taken directly from the uploaded CSV file each time.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-sm">
             {field("sendLimit", "Bulk Send Limit (per batch)", "number")}
-            {field("fuelSurchargePercent", "Fuel Surcharge %", "number")}
-            {field("resourcingSurchargePercent", "Resourcing Surcharge %", "number")}
-            {field("vatPercent", "VAT %", "number")}
           </div>
         </div>
 

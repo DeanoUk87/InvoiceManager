@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { sales } from "@/db/schema";
+import { sales, uploadedCsv } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { like, and, gte, lte, desc } from "drizzle-orm";
+import { like, and, gte, lte, desc, eq } from "drizzle-orm";
 
 export async function GET(req: Request) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
+  const action = searchParams.get("action");
+
+  // Return uploaded CSV list
+  if (action === "uploads") {
+    const uploads = await db.select().from(uploadedCsv).orderBy(desc(uploadedCsv.createdAt));
+    return NextResponse.json(uploads);
+  }
+
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
   const jobNumber = searchParams.get("jobNumber");

@@ -1,28 +1,28 @@
 import { NextResponse } from "next/server";
-import { db, batchDb } from "@/db";
+import { db } from "@/db";
 import { sales, invoices, settings } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
+
+export const maxDuration = 60;
 
 export async function POST() {
   try {
     const session = await auth();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Get all unprocessed sales grouped by unique invoice
     const ungrouped = await db.select({
       invoiceNumber: sales.invoiceNumber,
       customerAccount: sales.customerAccount,
       invoiceDate: sales.invoiceDate,
       numb2: sales.numb2,
-      id: sales.id,
     }).from(sales).where(and(eq(sales.msCreated, 0), eq(sales.invoiceReady, 0)));
 
     if (ungrouped.length === 0) {
       return NextResponse.json({ success: false, message: "No new sales data found. Upload a CSV first." });
     }
 
-    // Deduplicate by invoice number + account + date
+    // Deduplicate by invoice key
     const seen = new Set<string>();
     const unique = ungrouped.filter(s => {
       const key = `${s.invoiceNumber}|${s.customerAccount}|${s.invoiceDate}`;
@@ -34,31 +34,31 @@ export async function POST() {
     const [sett] = await db.select().from(settings).limit(1);
     const dueDays = sett?.invoiceDueDate ?? 30;
 
-    // Get all existing invoices for these accounts in one query to avoid N+1
-    const existingInvoices = await db.select({
+    // Fetch all existing invoices in ONE query - avoid N+1
+    const existingRows = await db.select({
       customerAccount: invoices.customerAccount,
       invoiceNumber: invoices.invoiceNumber,
       invoiceDate: invoices.invoiceDate,
     }).from(invoices);
 
     const existingSet = new Set(
-      existingInvoices.map(i => `${i.invoiceNumber}|${i.customerAccount}|${i.invoiceDate}`)
+      existingRows.map(i => `${i.invoiceNumber}|${i.customerAccount}|${i.invoiceDate}`)
     );
 
-    // Build list of new invoices to insert
+    // Build new invoices to insert
     const toInsert = unique
-      .filter(sale => !existingSet.has(`${sale.invoiceNumber}|${sale.customerAccount}|${sale.invoiceDate}`))
-      .map(sale => {
+      .filter(s => !existingSet.has(`${s.invoiceNumber}|${s.customerAccount}|${s.invoiceDate}`))
+      .map(s => {
         let dueDate: string | null = null;
-        if (sale.invoiceDate) {
-          const d = new Date(sale.invoiceDate);
-          d.setDate(d.getDate() + (sale.numb2 ?? dueDays));
+        if (s.invoiceDate) {
+          const d = new Date(s.invoiceDate);
+          d.setDate(d.getDate() + (s.numb2 ?? dueDays));
           dueDate = d.toISOString().split("T")[0];
         }
         return {
-          customerAccount: sale.customerAccount,
-          invoiceNumber: sale.invoiceNumber,
-          invoiceDate: sale.invoiceDate,
+          customerAccount: s.customerAccount,
+          invoiceNumber: s.invoiceNumber,
+          invoiceDate: s.invoiceDate,
           dueDate,
           dateCreated: new Date().toISOString().split("T")[0],
           printer: 0,
@@ -66,17 +66,17 @@ export async function POST() {
         };
       });
 
-    // Insert all new invoices using batch (parallel) - one HTTP call per 200
-    const BATCH_SIZE = 200;
-    for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
-      const chunk = toInsert.slice(i, i + BATCH_SIZE);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (batchDb as any).batch(
-        chunk.map(inv => batchDb.insert(invoices).values(inv))
+    // Insert all new invoices in parallel batches of 20 concurrent requests
+    const CONCURRENCY = 20;
+    for (let i = 0; i < toInsert.length; i += CONCURRENCY) {
+      await Promise.all(
+        toInsert.slice(i, i + CONCURRENCY).map(inv =>
+          db.insert(invoices).values(inv)
+        )
       );
     }
 
-    // Mark all those sales as invoice_ready in one update
+    // Mark sales as invoice_ready in one update
     await db.update(sales)
       .set({ invoiceReady: 1 })
       .where(and(eq(sales.msCreated, 0), eq(sales.invoiceReady, 0)));
@@ -89,6 +89,6 @@ export async function POST() {
 
   } catch (e) {
     console.error("Generate invoices error:", e);
-    return NextResponse.json({ error: `Failed to generate invoices: ${String(e)}` }, { status: 500 });
+    return NextResponse.json({ error: `Failed: ${String(e)}` }, { status: 500 });
   }
 }

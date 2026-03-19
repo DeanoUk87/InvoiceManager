@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, batchDb } from "@/db";
+import { db } from "@/db";
 import { uploadedCsv, sales } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
@@ -144,8 +144,8 @@ export async function POST(req: Request) {
       const chunk = rows.slice(i, i + BATCH_SIZE);
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (batchDb as any).batch(
-          chunk.map(row => batchDb.insert(sales).values(rowToInsert(row, filename)))
+        await Promise.all(
+          chunk.map(row => db.insert(sales).values(rowToInsert(row, filename)))
         );
       } catch (e) {
         return NextResponse.json({ error: `Insert failed at row ${i + 1}: ${String(e)}` }, { status: 500 });

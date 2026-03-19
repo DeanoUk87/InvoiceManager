@@ -44,15 +44,15 @@ export async function POST() {
     if (invoice.invoiceDate) conds.push(eq(sales.invoiceDate, invoice.invoiceDate));
     const saleRows = await db.select().from(sales).where(and(...conds));
 
-    // Use values directly from CSV
     const subTotal = saleRows.reduce((s, r) => s + (r.subTotal ?? 0), 0);
-    const fuelSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageFuelSurcharge ?? 0), 0);
-    const resourcingSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageResourcingSurcharge ?? 0), 0);
-    const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+    const fuelPct = saleRows[0]?.percentageFuelSurcharge ?? sett.fuelSurchargePercent ?? 3.5;
+    const resourcingPct = sett.resourcingSurchargePercent ?? 0;
+    const fuelSurchargeAmount = subTotal * (fuelPct / 100);
+    const resourcingSurchargeAmount = subTotal * (resourcingPct / 100);
     const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
-    const total = saleRows.reduce((s, r) => s + (r.invoiceTotal ?? 0), 0);
-    const fuelPct = sett.fuelSurchargePercent ?? 3.5;
     const vatPct = saleRows[0]?.vatPercent ?? sett.vatPercent ?? 20;
+    const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+    const total = saleRows[0]?.invoiceTotal ?? (netTotal + vatAmount);
 
     const lineItems = saleRows.map(s => `<tr><td>${s.jobDate??''}</td><td>${s.jobNumber??''}</td><td>${s.postcode2??''}</td><td>${s.destination??''}</td><td>${s.serviceType??''}</td><td>${s.items2??''}</td><td>${s.volumeWeight??''}</td><td>£${(s.subTotal??0).toFixed(2)}</td></tr>`).join('');
     const subject = (sett.messageTitle ?? 'Invoice {invoice_number}').replace('{invoice_number}', invoice.invoiceNumber);

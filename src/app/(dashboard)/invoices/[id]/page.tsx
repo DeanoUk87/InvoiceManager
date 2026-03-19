@@ -80,21 +80,18 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
   const { invoice, customer, sales, settings } = data;
 
-  // Use values directly from CSV data - these are already calculated by the source system
+  // percentageFuelSurcharge (col34) = the % rate (e.g. 8 = 8%), NOT a £ amount
+  // vatAmount (col38) = per-line VAT £, sum these
+  // invoiceTotal (col14) = grand total, same value repeated on every line - use first row
   const subTotal = sales.reduce((s, r) => s + (r.subTotal ?? 0), 0);
-  const fuelSurchargeAmount = sales.reduce((s, r) => s + (r.percentageFuelSurcharge ?? 0), 0);
-  const resourcingSurchargeAmount = sales.reduce((s, r) => s + (r.percentageResourcingSurcharge ?? 0), 0);
-  const vatAmount = sales.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  const fuelSurchargePct = sales[0]?.percentageFuelSurcharge ?? settings?.fuelSurchargePercent ?? 3.5;
+  const resourcingSurchargePct = settings?.resourcingSurchargePercent ?? 0;
+  const fuelSurchargeAmount = subTotal * (fuelSurchargePct / 100);
+  const resourcingSurchargeAmount = subTotal * (resourcingSurchargePct / 100);
   const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
-  const total = sales.reduce((s, r) => s + (r.invoiceTotal ?? 0), 0);
-  // Fuel/resourcing surcharge % for display label only (from first row or settings)
-  const fuelSurchargePct = sales[0]?.percentageFuelSurcharge != null && subTotal > 0
-    ? ((fuelSurchargeAmount / subTotal) * 100).toFixed(1)
-    : (settings?.fuelSurchargePercent ?? 3.5);
-  const resourcingSurchargePct = sales[0]?.percentageResourcingSurcharge != null && subTotal > 0
-    ? ((resourcingSurchargeAmount / subTotal) * 100).toFixed(1)
-    : (settings?.resourcingSurchargePercent ?? 0);
   const vatPct = sales[0]?.vatPercent ?? settings?.vatPercent ?? 20;
+  const vatAmount = sales.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  const total = sales[0]?.invoiceTotal ?? (netTotal + vatAmount);
 
   const handleMarkPrinted = async () => {
     await fetch(`/api/invoices/${id}`, {

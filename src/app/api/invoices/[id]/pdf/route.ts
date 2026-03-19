@@ -18,16 +18,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     db.select().from(settings).limit(1),
   ]);
 
-  // Use values directly from CSV - already calculated by source system
+  // Totals calculated from CSV source values:
+  // subTotal (col29) = per-line charge, sum to get invoice sub-total
+  // percentageFuelSurcharge (col34) = the % rate (e.g. 8 = 8%)
+  // vatAmount (col38) = per-line VAT £ amount, sum for total VAT
+  // invoiceTotal (col14) = the invoice grand total (same value on every line)
   const subTotal = saleRows.reduce((s, r) => s + (r.subTotal ?? 0), 0);
-  const fuelSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageFuelSurcharge ?? 0), 0);
-  const resourcingSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageResourcingSurcharge ?? 0), 0);
-  const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
-  const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
-  const total = saleRows.reduce((s, r) => s + (r.invoiceTotal ?? 0), 0);
-  const fuelPct = sett?.fuelSurchargePercent ?? 3.5;
+  const fuelPct = saleRows[0]?.percentageFuelSurcharge ?? sett?.fuelSurchargePercent ?? 3.5;
   const resourcingPct = sett?.resourcingSurchargePercent ?? 0;
-  const vatPct = (saleRows[0]?.vatPercent) ?? (sett?.vatPercent) ?? 20;
+  const fuelSurchargeAmount = subTotal * (fuelPct / 100);
+  const resourcingSurchargeAmount = subTotal * (resourcingPct / 100);
+  const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
+  const vatPct = saleRows[0]?.vatPercent ?? sett?.vatPercent ?? 20;
+  const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  const total = saleRows[0]?.invoiceTotal ?? (netTotal + vatAmount);
 
   const lineItems = saleRows.map(s => `<tr><td>${s.jobDate??''}</td><td>${s.jobNumber??''}</td><td>${s.senderReference??''}</td><td>${s.postcode2??''}</td><td>${s.destination??''}</td><td>${s.serviceType??''}</td><td align="right">${s.items2??''}</td><td align="right">${s.volumeWeight??''}</td><td align="right">£${(s.subTotal??0).toFixed(2)}</td></tr>`).join('');
 

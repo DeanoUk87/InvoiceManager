@@ -4,23 +4,9 @@ import { uploadedCsv, sales } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
-const SALES_COLS = [
-  "invoice_number","invoice_date","customer_account","customer_name",
-  "address1","address2","town","country","postcode","spacer1",
-  "customer_account2","numb1","items","weight","invoice_total","numb2",
-  "spacer2","job_number","job_date","sending_depot","delivery_depot",
-  "destination","town2","postcode2","service_type","items2",
-  "volume_weight","numb3","increased_liability_cover","sub_total",
-  "spacer3","numb4","sender_reference","numb5",
-  "percentage_fuel_surcharge","percentage_resourcing_surcharge",
-  "spacer4","senders_postcode","vat_amount","vat_percent",
-  "upload_code","ms_created","invoice_ready","upload_ts",
-];
-
 type RowValue = string | number | null;
 
-// Build Drizzle-compatible value object from a raw row array
-function rowToObj(row: RowValue[], filename: string) {
+function rowToInsert(row: RowValue[], filename: string) {
   return {
     invoiceNumber: String(row[0] ?? ""),
     invoiceDate: row[1] as string | null,
@@ -62,7 +48,7 @@ function rowToObj(row: RowValue[], filename: string) {
     sendersPostcode: row[37] as string | null,
     vatAmount: row[38] as number | null,
     vatPercent: row[39] as number | null,
-    uploadCode: String(row[40] ?? ""),
+    uploadCode: Math.random().toString(36).substring(2, 10),
     msCreated: 0,
     invoiceReady: 0,
     uploadTs: filename,
@@ -81,33 +67,30 @@ export async function POST(req: Request) {
     } catch (e) {
       return NextResponse.json({ error: `Failed to read upload: ${String(e)}` }, { status: 400 });
     }
-
     if (!file) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
 
     const filename = file.name.replace(/\.[^.]+$/, "");
 
-    // Duplicate check
     try {
       const existing = await db.select({ id: sales.id }).from(sales).where(eq(sales.uploadTs, filename)).limit(1);
       if (existing.length > 0) {
         return NextResponse.json({ error: "Duplicate: this CSV file has already been uploaded." }, { status: 409 });
       }
     } catch (e) {
-      return NextResponse.json({ error: `Database error: ${String(e)}` }, { status: 500 });
+      return NextResponse.json({ error: `Database connection failed: ${String(e)}` }, { status: 500 });
     }
 
     const text = await file.text();
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length === 0) return NextResponse.json({ error: "Empty file" }, { status: 400 });
 
-    // Parse all rows
+    // Parse rows - no header row in this CSV format
     const rows: RowValue[][] = [];
     for (const line of lines) {
       const cols = parseCSVLine(line);
       if (cols.length < 3) continue;
       const customerAccount = cols[2]?.trim() ?? "";
       if (!customerAccount) continue;
-
       rows.push([
         cols[0]?.trim() || null,
         parseDate(cols[1]),
@@ -149,48 +132,21 @@ export async function POST(req: Request) {
         cols[37]?.trim() || null,
         toFloat(cols[38]),
         toFloat(cols[39]),
-        Math.random().toString(36).substring(2, 10),
-        0,
-        0,
-        filename,
       ]);
     }
 
     if (rows.length === 0) return NextResponse.json({ error: "No valid data rows found" }, { status: 400 });
 
-    // Use db.run() for multi-row INSERT per chunk - single HTTP call per chunk
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dbRaw = db as any;
-    const colList = SALES_COLS.join(", ");
-    const CHUNK = 50;
-
-    if (typeof dbRaw.run === "function") {
-      // sqlite-proxy supports db.run(sql, params) - one HTTP call per chunk
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const chunk = rows.slice(i, i + CHUNK);
-        const placeholders = chunk
-          .map(() => `(${SALES_COLS.map(() => "?").join(", ")})`)
-          .join(", ");
-        const params = chunk.flat();
-        try {
-          await dbRaw.run(
-            `INSERT INTO sales (${colList}) VALUES ${placeholders}`,
-            params
-          );
-        } catch (e) {
-          return NextResponse.json({ error: `Insert failed at chunk ${i}: ${String(e)}` }, { status: 500 });
-        }
-      }
-    } else {
-      // Fallback: use Drizzle insert with chunks of 20 via .values([...])
-      const SMALL_CHUNK = 20;
-      for (let i = 0; i < rows.length; i += SMALL_CHUNK) {
-        const chunk = rows.slice(i, i + SMALL_CHUNK);
-        try {
-          await db.insert(sales).values(chunk.map(r => rowToObj(r, filename)));
-        } catch (e) {
-          return NextResponse.json({ error: `Insert failed at row ${i}: ${String(e)}` }, { status: 500 });
-        }
+    // Insert 10 rows concurrently (parallel HTTP calls) - each row is one insert
+    const CONCURRENCY = 10;
+    for (let i = 0; i < rows.length; i += CONCURRENCY) {
+      const batch = rows.slice(i, i + CONCURRENCY);
+      try {
+        await Promise.all(
+          batch.map(row => db.insert(sales).values(rowToInsert(row, filename)))
+        );
+      } catch (e) {
+        return NextResponse.json({ error: `Insert failed at row ${i + 1}: ${String(e)}` }, { status: 500 });
       }
     }
 
@@ -204,7 +160,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, rowCount: rows.length });
 
   } catch (e) {
-    console.error("Upload unhandled error:", e);
+    console.error("Upload error:", e);
     return NextResponse.json({ error: `Unexpected error: ${String(e)}` }, { status: 500 });
   }
 }

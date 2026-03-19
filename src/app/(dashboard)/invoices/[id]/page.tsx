@@ -17,6 +17,11 @@ interface Sale {
   items2: number | null;
   volumeWeight: number | null;
   subTotal: number | null;
+  invoiceTotal: number | null;
+  percentageFuelSurcharge: number | null;
+  percentageResourcingSurcharge: number | null;
+  vatAmount: number | null;
+  vatPercent: number | null;
 }
 
 interface InvoiceData {
@@ -75,12 +80,21 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
   const { invoice, customer, sales, settings } = data;
 
+  // Use values directly from CSV data - these are already calculated by the source system
   const subTotal = sales.reduce((s, r) => s + (r.subTotal ?? 0), 0);
-  const fuelSurcharge = subTotal * ((settings?.fuelSurchargePercent ?? 3.5) / 100);
-  const resourcingSurcharge = subTotal * ((settings?.resourcingSurchargePercent ?? 0) / 100);
-  const netTotal = subTotal + fuelSurcharge + resourcingSurcharge;
-  const vatAmount = netTotal * ((settings?.vatPercent ?? 20) / 100);
-  const total = netTotal + vatAmount;
+  const fuelSurchargeAmount = sales.reduce((s, r) => s + (r.percentageFuelSurcharge ?? 0), 0);
+  const resourcingSurchargeAmount = sales.reduce((s, r) => s + (r.percentageResourcingSurcharge ?? 0), 0);
+  const vatAmount = sales.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
+  const total = sales.reduce((s, r) => s + (r.invoiceTotal ?? 0), 0);
+  // Fuel/resourcing surcharge % for display label only (from first row or settings)
+  const fuelSurchargePct = sales[0]?.percentageFuelSurcharge != null && subTotal > 0
+    ? ((fuelSurchargeAmount / subTotal) * 100).toFixed(1)
+    : (settings?.fuelSurchargePercent ?? 3.5);
+  const resourcingSurchargePct = sales[0]?.percentageResourcingSurcharge != null && subTotal > 0
+    ? ((resourcingSurchargeAmount / subTotal) * 100).toFixed(1)
+    : (settings?.resourcingSurchargePercent ?? 0);
+  const vatPct = sales[0]?.vatPercent ?? settings?.vatPercent ?? 20;
 
   const handleMarkPrinted = async () => {
     await fetch(`/api/invoices/${id}`, {
@@ -272,19 +286,19 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
               <span className="font-medium">{subTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600">FUEL SURCHARGE {settings?.fuelSurchargePercent ?? 3.5}%:</span>
-              <span className="font-medium">{fuelSurcharge.toFixed(2)}</span>
+              <span className="text-gray-600">FUEL SURCHARGE {fuelSurchargePct}%:</span>
+              <span className="font-medium">{fuelSurchargeAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600">PERCENTAGE RESOURCING SURCHARGE {settings?.resourcingSurchargePercent ?? 0}%:</span>
-              <span className="font-medium">{resourcingSurcharge.toFixed(2)}</span>
+              <span className="text-gray-600">PERCENTAGE RESOURCING SURCHARGE {resourcingSurchargePct}%:</span>
+              <span className="font-medium">{resourcingSurchargeAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-gray-100">
               <span className="text-gray-600 font-medium">NET TOTAL:</span>
               <span className="font-medium">{netTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600">VAT ({settings?.vatPercent ?? 20}%):</span>
+              <span className="text-gray-600">VAT ({vatPct}%):</span>
               <span className="font-medium">{vatAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-2 bg-gray-50 rounded px-2">

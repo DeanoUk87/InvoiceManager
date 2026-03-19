@@ -18,12 +18,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     db.select().from(settings).limit(1),
   ]);
 
+  // Use values directly from CSV - already calculated by source system
   const subTotal = saleRows.reduce((s, r) => s + (r.subTotal ?? 0), 0);
-  const fuelSurcharge = subTotal * ((sett?.fuelSurchargePercent ?? 3.5) / 100);
-  const resourcingSurcharge = subTotal * ((sett?.resourcingSurchargePercent ?? 0) / 100);
-  const netTotal = subTotal + fuelSurcharge + resourcingSurcharge;
-  const vatAmount = netTotal * ((sett?.vatPercent ?? 20) / 100);
-  const total = netTotal + vatAmount;
+  const fuelSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageFuelSurcharge ?? 0), 0);
+  const resourcingSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageResourcingSurcharge ?? 0), 0);
+  const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
+  const total = saleRows.reduce((s, r) => s + (r.invoiceTotal ?? 0), 0);
+  const fuelPct = sett?.fuelSurchargePercent ?? 3.5;
+  const resourcingPct = sett?.resourcingSurchargePercent ?? 0;
+  const vatPct = (saleRows[0]?.vatPercent) ?? (sett?.vatPercent) ?? 20;
 
   const lineItems = saleRows.map(s => `<tr><td>${s.jobDate??''}</td><td>${s.jobNumber??''}</td><td>${s.senderReference??''}</td><td>${s.postcode2??''}</td><td>${s.destination??''}</td><td>${s.serviceType??''}</td><td align="right">${s.items2??''}</td><td align="right">${s.volumeWeight??''}</td><td align="right">£${(s.subTotal??0).toFixed(2)}</td></tr>`).join('');
 
@@ -34,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 <hr>
 <div class="hdr"><div><strong>${invoice.customerAccount}</strong></div><div style="text-align:right"><strong>ACCOUNT:</strong> ${invoice.customerAccount}<br><strong>INVOICE NO:</strong> ${invoice.invoiceNumber}<br><strong>DATE:</strong> ${invoice.invoiceDate??''}</div></div>
 <table><thead><tr><th>JOB DATE</th><th>JOB NO.</th><th>SENDERS REF</th><th>POSTCODE</th><th>DESTINATION</th><th>SERVICE</th><th>ITEMS</th><th>WEIGHT</th><th>CHARGE</th></tr></thead><tbody>${lineItems}</tbody></table>
-<table class="totals"><tr><td>SUB TOTAL:</td><td align="right">£${subTotal.toFixed(2)}</td></tr><tr><td>FUEL ${sett?.fuelSurchargePercent??3.5}%:</td><td align="right">£${fuelSurcharge.toFixed(2)}</td></tr><tr><td>RESOURCING ${sett?.resourcingSurchargePercent??0}%:</td><td align="right">£${resourcingSurcharge.toFixed(2)}</td></tr><tr><td>NET TOTAL:</td><td align="right">£${netTotal.toFixed(2)}</td></tr><tr><td>VAT ${sett?.vatPercent??20}%:</td><td align="right">£${vatAmount.toFixed(2)}</td></tr><tr class="grand"><td>TOTAL:</td><td align="right">£${total.toFixed(2)}</td></tr></table>
+<table class="totals"><tr><td>SUB TOTAL:</td><td align="right">£${subTotal.toFixed(2)}</td></tr><tr><td>FUEL ${fuelPct}%:</td><td align="right">£${fuelSurchargeAmount.toFixed(2)}</td></tr><tr><td>RESOURCING ${resourcingPct}%:</td><td align="right">£${resourcingSurchargeAmount.toFixed(2)}</td></tr><tr><td>NET TOTAL:</td><td align="right">£${netTotal.toFixed(2)}</td></tr><tr><td>VAT ${vatPct}%:</td><td align="right">£${vatAmount.toFixed(2)}</td></tr><tr class="grand"><td>TOTAL:</td><td align="right">£${total.toFixed(2)}</td></tr></table>
 <script>window.onload=()=>window.print();</script>
 </body></html>`;
 

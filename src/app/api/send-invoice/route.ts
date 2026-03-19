@@ -20,17 +20,21 @@ export async function POST(req: Request) {
   if (invoice.invoiceDate) conds.push(eq(sales.invoiceDate, invoice.invoiceDate));
   const saleRows = await db.select().from(sales).where(and(...conds));
 
+  // Use values directly from CSV - already calculated by source system
   const subTotal = saleRows.reduce((s, r) => s + (r.subTotal ?? 0), 0);
-  const fuelSurcharge = subTotal * ((sett?.fuelSurchargePercent ?? 3.5) / 100);
-  const resourcingSurcharge = subTotal * ((sett?.resourcingSurchargePercent ?? 0) / 100);
-  const netTotal = subTotal + fuelSurcharge + resourcingSurcharge;
-  const vatAmount = netTotal * ((sett?.vatPercent ?? 20) / 100);
-  const total = netTotal + vatAmount;
+  const fuelSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageFuelSurcharge ?? 0), 0);
+  const resourcingSurchargeAmount = saleRows.reduce((s, r) => s + (r.percentageResourcingSurcharge ?? 0), 0);
+  const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
+  const total = saleRows.reduce((s, r) => s + (r.invoiceTotal ?? 0), 0);
+  const fuelPct = sett?.fuelSurchargePercent ?? 3.5;
+  const resourcingPct = sett?.resourcingSurchargePercent ?? 0;
+  const vatPct = (saleRows[0]?.vatPercent) ?? (sett?.vatPercent) ?? 20;
 
   const lineItems = saleRows.map(s => `<tr><td>${s.jobDate??''}</td><td>${s.jobNumber??''}</td><td>${s.senderReference??''}</td><td>${s.postcode2??''}</td><td>${s.destination??''}</td><td>${s.serviceType??''}</td><td>${s.items2??''}</td><td>${s.volumeWeight??''}</td><td>£${(s.subTotal??0).toFixed(2)}</td></tr>`).join('');
   const subject = (sett?.messageTitle ?? 'Invoice {invoice_number}').replace('{invoice_number}', invoice.invoiceNumber);
   const body = (sett?.defaultMessage2 ?? 'Please find your invoice {invoice_number}.').replace('{invoice_number}', invoice.invoiceNumber);
-  const html = `<div style="font-family:Arial,sans-serif"><h2>${sett?.companyName??''}</h2><p>${body.replace(/\n/g,'<br>')}</p><table border="1" style="border-collapse:collapse;width:100%"><thead><tr><th>Job Date</th><th>Job No.</th><th>Senders Ref</th><th>Postcode</th><th>Destination</th><th>Service</th><th>Items</th><th>Weight</th><th>Charge</th></tr></thead><tbody>${lineItems}</tbody></table><br><strong>Sub Total: £${subTotal.toFixed(2)}</strong><br><strong>Fuel Surcharge ${sett?.fuelSurchargePercent??3.5}%: £${fuelSurcharge.toFixed(2)}</strong><br><strong>Net Total: £${netTotal.toFixed(2)}</strong><br><strong>VAT ${sett?.vatPercent??20}%: £${vatAmount.toFixed(2)}</strong><br><strong style="color:#2563eb;font-size:16px">TOTAL: £${total.toFixed(2)}</strong></div>`;
+  const html = `<div style="font-family:Arial,sans-serif"><h2>${sett?.companyName??''}</h2><p>${body.replace(/\n/g,'<br>')}</p><table border="1" style="border-collapse:collapse;width:100%"><thead><tr><th>Job Date</th><th>Job No.</th><th>Senders Ref</th><th>Postcode</th><th>Destination</th><th>Service</th><th>Items</th><th>Weight</th><th>Charge</th></tr></thead><tbody>${lineItems}</tbody></table><br><strong>Sub Total: £${subTotal.toFixed(2)}</strong><br><strong>Fuel Surcharge ${fuelPct}%: £${fuelSurchargeAmount.toFixed(2)}</strong><br><strong>Net Total: £${netTotal.toFixed(2)}</strong><br><strong>VAT ${vatPct}%: £${vatAmount.toFixed(2)}</strong><br><strong style="color:#2563eb;font-size:16px">TOTAL: £${total.toFixed(2)}</strong></div>`;
 
   if (process.env.SMTP_PASS) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

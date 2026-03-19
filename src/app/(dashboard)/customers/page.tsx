@@ -68,13 +68,13 @@ export default function CustomersPage() {
       label: "Login Access",
       sortable: false,
       render: (row: Record<string, unknown>) => (
-        <span
-          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            row.loginAccess ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-          }`}
-        >
-          {row.loginAccess ? "Access" : "No Access"}
-        </span>
+        <Link href={`/customers/${row.id}/login`}>
+          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${
+            row.loginAccess ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+          }`}>
+            {row.loginAccess ? "✓ Active" : "Set Login"}
+          </span>
+        </Link>
       ),
     },
     {

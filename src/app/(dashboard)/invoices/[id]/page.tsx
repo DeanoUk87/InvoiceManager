@@ -102,7 +102,8 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
   const resourcingSurchargeAmount = subTotal * (resourcingSurchargePct / 100);
   const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
   const vatPct = sales[0]?.vatPercent ?? settings?.vatPercent ?? 20;
-  const vatAmount = sales.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  // vatAmount is an invoice-level figure repeated on every line - use first row only
+  const vatAmount = sales[0]?.vatAmount ?? 0;
   const total = sales[0]?.invoiceTotal ?? (netTotal + vatAmount);
 
   const handleMarkPrinted = async () => {
@@ -248,9 +249,6 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
               {sales[0]?.country && <p>{sales[0].country}</p>}
               {sales[0]?.postcode && <p>{sales[0].postcode}</p>}
             </div>
-            {customer?.customerEmail && (
-              <p className="text-xs text-blue-600 mt-1">{customer.customerEmail}</p>
-            )}
           </div>
           <div className="min-w-[220px]">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Invoice Details</p>

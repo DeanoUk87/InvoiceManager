@@ -51,7 +51,7 @@ export async function POST() {
     const resourcingSurchargeAmount = subTotal * (resourcingPct / 100);
     const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
     const vatPct = saleRows[0]?.vatPercent ?? sett.vatPercent ?? 20;
-    const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+    const vatAmount = saleRows[0]?.vatAmount ?? 0; // invoice-level figure, same on every line
     const total = saleRows[0]?.invoiceTotal ?? (netTotal + vatAmount);
 
     const lineItems = saleRows.map(s => `<tr><td>${s.jobDate??''}</td><td>${s.jobNumber??''}</td><td>${s.postcode2??''}</td><td>${s.destination??''}</td><td>${s.serviceType??''}</td><td>${s.items2??''}</td><td>${s.volumeWeight??''}</td><td>£${(s.subTotal??0).toFixed(2)}</td></tr>`).join('');

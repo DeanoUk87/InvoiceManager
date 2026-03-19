@@ -10,6 +10,8 @@ export default async function DashboardLayout({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
+  // Customers have their own portal - don't let them into the dashboard
+  if (session.user.role === "customer") redirect("/my-invoices");
 
   return (
     <div className="flex min-h-screen bg-gray-50">

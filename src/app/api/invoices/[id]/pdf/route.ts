@@ -68,7 +68,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const resourcingSurchargeAmount = subTotal * (resourcingPct / 100);
   const netTotal = subTotal + fuelSurchargeAmount + resourcingSurchargeAmount;
   const vatPct = saleRows[0]?.vatPercent ?? sett?.vatPercent ?? 20;
-  const vatAmount = saleRows.reduce((s, r) => s + (r.vatAmount ?? 0), 0);
+  const vatAmount = saleRows[0]?.vatAmount ?? 0; // invoice-level figure, same on every line
   const total = saleRows[0]?.invoiceTotal ?? (netTotal + vatAmount);
 
   // Customer address from first sales row (comes from CSV cols 3-8)

@@ -42,12 +42,15 @@ export async function PUT(req: Request) {
     if (adminOnly(session)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const { name, email, password, role, username } = data;
     if (!email || !password || !role) return NextResponse.json({ error: "Email, password and role required." }, { status: 400 });
+    // Check email not already taken
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
+    if (existing) return NextResponse.json({ error: "A user with this email already exists." }, { status: 409 });
     const hashed = await bcrypt.hash(password, 10);
     const id = `user-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-    const [user] = await db.insert(users).values({
+    await db.insert(users).values({
       id, name: name || null, email, password: hashed, role, username: username || null,
-    }).returning({ id: users.id, email: users.email, role: users.role, name: users.name });
-    return NextResponse.json(user);
+    });
+    return NextResponse.json({ success: true, id, email, role, name: name || null });
   }
 
   if (action === "update-user") {
@@ -56,9 +59,8 @@ export async function PUT(req: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = { name: name || null, email, role, username: username || null };
     if (password && password.trim()) updateData.password = await bcrypt.hash(password, 10);
-    const [user] = await db.update(users).set(updateData).where(eq(users.id, userId))
-      .returning({ id: users.id, email: users.email, role: users.role, name: users.name });
-    return NextResponse.json(user);
+    await db.update(users).set(updateData).where(eq(users.id, userId));
+    return NextResponse.json({ success: true, id: userId, email, role });
   }
 
   // Default: update settings

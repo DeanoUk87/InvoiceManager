@@ -26,7 +26,8 @@ export default function LoginPage() {
     if (result?.error) {
       setError("Invalid email or password");
     } else {
-      router.push("/dashboard");
+      // Customers go to their invoice portal, everyone else to dashboard
+      router.push("/");
       router.refresh();
     }
   };

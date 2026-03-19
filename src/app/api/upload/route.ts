@@ -43,11 +43,11 @@ function rowToInsert(row: RowValue[], filename: string) {
     senderReference: row[32] as string | null,
     numb5: row[33] as number | null,
     percentageFuelSurcharge: row[34] as number | null,
-    percentageResourcingSurcharge: row[35] as number | null,
-    spacer4: row[36] as string | null,
-    sendersPostcode: row[37] as string | null,
-    vatAmount: row[38] as number | null,
-    vatPercent: row[39] as number | null,
+    spacer4: row[35] as string | null,           // col35 = spacer4
+    sendersPostcode: row[36] as string | null,   // col36 = senders_postcode
+    vatAmount: row[37] as number | null,         // col37 = vat_amount
+    vatPercent: row[38] as number | null,        // col38 = vat_percent
+    percentageResourcingSurcharge: row[39] as number | null, // col39 = percentage_resourcing_surcharge
     uploadCode: Math.random().toString(36).substring(2, 10),
     msCreated: 0,
     invoiceReady: 0,
@@ -126,12 +126,12 @@ export async function POST(req: Request) {
         toFloat(cols[31]),
         cols[32]?.trim() || null,
         toFloat(cols[33]),
-        toFloat(cols[34]),
-        toFloat(cols[35]),
-        cols[36]?.trim() || null,
-        cols[37]?.trim() || null,
-        toFloat(cols[38]),
-        toFloat(cols[39]),
+        toFloat(cols[34]),          // col34 = percentage_fuel_surcharge
+        cols[35]?.trim() || null,  // col35 = spacer4
+        cols[36]?.trim() || null,  // col36 = senders_postcode
+        toFloat(cols[37]),          // col37 = vat_amount
+        toFloat(cols[38]),          // col38 = vat_percent
+        toFloat(cols[39]),          // col39 = percentage_resourcing_surcharge
       ]);
     }
 

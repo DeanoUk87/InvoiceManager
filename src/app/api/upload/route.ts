@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, batchDb } from "@/db";
 import { uploadedCsv, sales } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
@@ -137,13 +137,15 @@ export async function POST(req: Request) {
 
     if (rows.length === 0) return NextResponse.json({ error: "No valid data rows found" }, { status: 400 });
 
-    // Insert 10 rows concurrently (parallel HTTP calls) - each row is one insert
-    const CONCURRENCY = 10;
-    for (let i = 0; i < rows.length; i += CONCURRENCY) {
-      const batch = rows.slice(i, i + CONCURRENCY);
+    // Use db.batch() with parallel batchCallback - all queries fire simultaneously
+    // Chunk into groups of 200 to avoid hitting any request size limits
+    const BATCH_SIZE = 200;
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const chunk = rows.slice(i, i + BATCH_SIZE);
       try {
-        await Promise.all(
-          batch.map(row => db.insert(sales).values(rowToInsert(row, filename)))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (batchDb as any).batch(
+          chunk.map(row => batchDb.insert(sales).values(rowToInsert(row, filename)))
         );
       } catch (e) {
         return NextResponse.json({ error: `Insert failed at row ${i + 1}: ${String(e)}` }, { status: 500 });

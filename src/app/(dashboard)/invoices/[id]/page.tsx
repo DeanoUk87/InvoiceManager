@@ -22,6 +22,12 @@ interface Sale {
   percentageResourcingSurcharge: number | null;
   vatAmount: number | null;
   vatPercent: number | null;
+  customerName: string | null;
+  address1: string | null;
+  address2: string | null;
+  town: string | null;
+  country: string | null;
+  postcode: string | null;
 }
 
 interface InvoiceData {
@@ -47,7 +53,9 @@ interface InvoiceData {
     companyAddress2: string | null;
     city: string | null;
     postcode: string | null;
+    country: string | null;
     phone: string | null;
+    cemail: string | null;
     vatNumber: string | null;
     fuelSurchargePercent: number;
     resourcingSurchargePercent: number;
@@ -190,48 +198,66 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
       {/* Invoice Document */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8" id="invoice-content">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div className="w-24 h-16 bg-blue-600 rounded-lg flex items-center justify-center">
-            <FileText size={32} className="text-white" />
+
+        {/* Company Header */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+              <FileText size={24} className="text-white" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-blue-600 leading-tight">{settings?.companyName ?? "Invoice Manager"}</p>
+              <p className="text-xs text-gray-400">Invoice Management System</p>
+            </div>
           </div>
-          <div className="text-right text-sm">
-            <p className="font-bold text-gray-900 text-base">{settings?.companyName}</p>
-            {settings?.companyAddress1 && <p className="text-gray-600">{settings.companyAddress1}</p>}
-            {settings?.companyAddress2 && <p className="text-gray-600">{settings.companyAddress2}</p>}
-            {settings?.city && <p className="text-gray-600">{settings.city}</p>}
-            {settings?.postcode && <p className="text-gray-600">{settings.postcode}</p>}
-            {settings?.phone && <p className="text-gray-600"><span className="font-semibold">TEL:</span> {settings.phone}</p>}
-            {settings?.vatNumber && <p className="text-gray-600"><span className="font-semibold">VAT NUMBER:</span> {settings.vatNumber}</p>}
+          <div className="text-right text-xs leading-relaxed text-gray-600">
+            {settings?.companyAddress1 && <p>{settings.companyAddress1}</p>}
+            {settings?.companyAddress2 && <p>{settings.companyAddress2}</p>}
+            {(settings?.city || settings?.postcode) && (
+              <p>{[settings.city, settings.postcode].filter(Boolean).join(" ")}</p>
+            )}
+            {settings?.country && <p>{settings.country}</p>}
+            {settings?.phone && <p><span className="font-semibold text-gray-700">Tel:</span> {settings.phone}</p>}
+            {settings?.cemail && <p className="text-blue-600">{settings.cemail}</p>}
+            {settings?.vatNumber && <p><span className="font-semibold text-gray-700">VAT Reg:</span> {settings.vatNumber}</p>}
           </div>
         </div>
 
-        <hr className="border-gray-200 mb-6" />
+        {/* Blue invoice title bar */}
+        <div className="bg-blue-600 text-white rounded-lg px-5 py-3 flex justify-between items-center mb-6">
+          <span className="text-lg font-bold tracking-wide">INVOICE</span>
+          <span className="text-sm opacity-90">#{invoice.invoiceNumber}</span>
+        </div>
 
-        {/* Customer + Invoice Details */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="text-sm">
-            {sales[0] && (
-              <>
-                <p className="font-bold text-gray-900">{sales[0].destination ?? invoice.customerAccount}</p>
-                {sales[0].destination && <p className="text-gray-700">{sales[0].destination}</p>}
-              </>
+        {/* Bill To + Invoice Details */}
+        <div className="flex justify-between items-start mb-6 gap-6">
+          <div className="flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Bill To</p>
+            {sales[0]?.customerName && (
+              <p className="font-bold text-gray-900 text-sm">{sales[0].customerName}</p>
             )}
-            <p className="text-gray-700 font-medium">{invoice.customerAccount}</p>
+            <div className="text-xs text-gray-600 leading-relaxed mt-1">
+              {sales[0]?.address1 && <p>{sales[0].address1}</p>}
+              {sales[0]?.address2 && <p>{sales[0].address2}</p>}
+              {sales[0]?.town && <p>{sales[0].town}</p>}
+              {sales[0]?.country && <p>{sales[0].country}</p>}
+              {sales[0]?.postcode && <p>{sales[0].postcode}</p>}
+            </div>
+            {customer?.customerEmail && (
+              <p className="text-xs text-blue-600 mt-1">{customer.customerEmail}</p>
+            )}
           </div>
-          <div className="text-sm text-right space-y-1">
-            <p className="text-gray-700">
-              <span className="font-bold">ACCOUNT:</span> {invoice.customerAccount}
-            </p>
-            <p className="text-gray-700">
-              <span className="font-bold">INVOICE NO:</span> {invoice.invoiceNumber}
-            </p>
-            <p className="text-gray-700">
-              <span className="font-bold">INVOICE DATE:</span> {formatDate(invoice.invoiceDate)}
-            </p>
-            <p className="text-gray-700">
-              <span className="font-bold">PO NUMBER:</span> {invoice.poNumber ?? ""}
-            </p>
+          <div className="min-w-[220px]">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Invoice Details</p>
+            <table className="text-xs w-full">
+              <tbody>
+                <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Account:</td><td className="text-gray-600">{invoice.customerAccount}</td></tr>
+                <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Invoice No:</td><td className="font-bold text-gray-900">{invoice.invoiceNumber}</td></tr>
+                <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Invoice Date:</td><td className="text-gray-600">{formatDate(invoice.invoiceDate)}</td></tr>
+                <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Due Date:</td><td className="text-red-600 font-semibold">{formatDate(invoice.dueDate)}</td></tr>
+                {invoice.poNumber && <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">PO Number:</td><td className="text-gray-600">{invoice.poNumber}</td></tr>}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -239,35 +265,33 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         <div className="overflow-x-auto rounded-lg border border-gray-200 mb-6">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-gray-100 border-b border-gray-200">
-                <th className="px-3 py-2.5 text-left font-bold text-gray-700">JOB DATE</th>
-                <th className="px-3 py-2.5 text-left font-bold text-gray-700">JOB NUMBER</th>
-                <th className="px-3 py-2.5 text-left font-bold text-gray-700">SENDERS REF</th>
-                <th className="px-3 py-2.5 text-left font-bold text-gray-700">POSTCODE</th>
-                <th className="px-3 py-2.5 text-left font-bold text-gray-700">DESTINATION</th>
-                <th className="px-3 py-2.5 text-left font-bold text-gray-700">SERVICE TYPE</th>
-                <th className="px-3 py-2.5 text-right font-bold text-gray-700">ITEMS</th>
-                <th className="px-3 py-2.5 text-right font-bold text-gray-700">WEIGHT</th>
-                <th className="px-3 py-2.5 text-right font-bold text-gray-700">CHARGE</th>
+              <tr className="bg-blue-700 text-white">
+                <th className="px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-[10px]">Job Date</th>
+                <th className="px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-[10px]">Job No.</th>
+                <th className="px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-[10px]">Senders Ref</th>
+                <th className="px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-[10px]">Postcode</th>
+                <th className="px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-[10px]">Destination</th>
+                <th className="px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-[10px]">Service</th>
+                <th className="px-3 py-2.5 text-right font-semibold uppercase tracking-wide text-[10px]">Items</th>
+                <th className="px-3 py-2.5 text-right font-semibold uppercase tracking-wide text-[10px]">Weight</th>
+                <th className="px-3 py-2.5 text-right font-semibold uppercase tracking-wide text-[10px]">Charge</th>
               </tr>
             </thead>
             <tbody>
               {sales.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-3 py-6 text-center text-gray-400">No line items</td>
-                </tr>
+                <tr><td colSpan={9} className="px-3 py-6 text-center text-gray-400">No line items</td></tr>
               ) : (
-                sales.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-3 py-2">{formatDate(s.jobDate)}</td>
-                    <td className="px-3 py-2">{s.jobNumber ?? ""}</td>
-                    <td className="px-3 py-2">{s.senderReference ?? ""}</td>
-                    <td className="px-3 py-2">{s.postcode2 ?? ""}</td>
-                    <td className="px-3 py-2">{s.destination ?? ""}</td>
-                    <td className="px-3 py-2">{s.serviceType ?? ""}</td>
-                    <td className="px-3 py-2 text-right">{s.items2 ?? ""}</td>
-                    <td className="px-3 py-2 text-right">{s.volumeWeight ?? ""}</td>
-                    <td className="px-3 py-2 text-right">{s.subTotal?.toFixed(2) ?? ""}</td>
+                sales.map((s, i) => (
+                  <tr key={s.id} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50`}>
+                    <td className="px-3 py-2 text-gray-600">{formatDate(s.jobDate)}</td>
+                    <td className="px-3 py-2 text-gray-700 font-medium">{s.jobNumber ?? ""}</td>
+                    <td className="px-3 py-2 text-gray-600">{s.senderReference ?? ""}</td>
+                    <td className="px-3 py-2 text-gray-600">{s.postcode2 ?? ""}</td>
+                    <td className="px-3 py-2 text-gray-700">{s.destination ?? ""}</td>
+                    <td className="px-3 py-2 text-gray-600">{s.serviceType ?? ""}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{s.items2 ?? ""}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{s.volumeWeight ?? ""}</td>
+                    <td className="px-3 py-2 text-right font-medium text-gray-900">£{(s.subTotal ?? 0).toFixed(2)}</td>
                   </tr>
                 ))
               )}
@@ -276,44 +300,42 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         </div>
 
         {/* Totals */}
-        <div className="flex justify-end">
-          <div className="w-72 text-sm space-y-1.5">
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600">SUB TOTAL:</span>
-              <span className="font-medium">{subTotal.toFixed(2)}</span>
+        <div className="flex justify-end mb-6">
+          <div className="w-72 text-sm">
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-600">Sub Total:</span>
+              <span className="font-medium">£{subTotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600">FUEL SURCHARGE {fuelSurchargePct}%:</span>
-              <span className="font-medium">{fuelSurchargeAmount.toFixed(2)}</span>
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-500 text-xs">Fuel Surcharge ({fuelSurchargePct}%):</span>
+              <span className="text-gray-600">£{fuelSurchargeAmount.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600">PERCENTAGE RESOURCING SURCHARGE {resourcingSurchargePct}%:</span>
-              <span className="font-medium">{resourcingSurchargeAmount.toFixed(2)}</span>
+            {resourcingSurchargePct > 0 && (
+              <div className="flex justify-between py-2 border-b border-gray-100">
+                <span className="text-gray-500 text-xs">Resourcing Surcharge ({resourcingSurchargePct}%):</span>
+                <span className="text-gray-600">£{resourcingSurchargeAmount.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="font-semibold text-gray-800">Net Total:</span>
+              <span className="font-semibold">£{netTotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600 font-medium">NET TOTAL:</span>
-              <span className="font-medium">{netTotal.toFixed(2)}</span>
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-500 text-xs">VAT ({vatPct}%):</span>
+              <span className="text-gray-600">£{vatAmount.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-600">VAT ({vatPct}%):</span>
-              <span className="font-medium">{vatAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between py-2 bg-gray-50 rounded px-2">
-              <span className="font-bold text-gray-900">TOTAL:</span>
-              <span className="font-bold text-blue-600 text-base">{formatCurrency(total)}</span>
+            <div className="flex justify-between py-3 px-3 bg-blue-600 text-white rounded-lg mt-1">
+              <span className="font-bold text-sm">TOTAL DUE:</span>
+              <span className="font-bold text-base">{formatCurrency(total)}</span>
             </div>
           </div>
         </div>
 
-        {/* Status */}
-        <div className="mt-6 flex items-center gap-2">
-          <span
-            className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
-              invoice.printer === 2
-                ? "bg-green-100 text-green-700"
-                : "bg-orange-100 text-orange-700"
-            }`}
-          >
+        {/* Footer row */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+            invoice.printer === 2 ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+          }`}>
             {invoice.printer === 2 ? "Printed / Sent" : "Unprinted"}
           </span>
           {customer?.customerEmail && (

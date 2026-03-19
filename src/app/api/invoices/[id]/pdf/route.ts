@@ -179,7 +179,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       </div>
     </div>
     <div class="company-info">
-      <div class="company-name">${companyName}</div>
       ${compAddr1 ? `<div>${compAddr1}</div>` : ""}
       ${compAddr2 ? `<div>${compAddr2}</div>` : ""}
       ${compCity || compPostcode ? `<div>${compCity}${compCity && compPostcode ? " " : ""}${compPostcode}</div>` : ""}

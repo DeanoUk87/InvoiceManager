@@ -2,7 +2,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, ShieldAlert } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 interface Settings {
   companyName: string;
@@ -26,6 +28,15 @@ interface Settings {
 }
 
 export default function SettingsPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role !== "admin") {
+      router.push("/dashboard");
+    }
+  }, [session, status, router]);
+
   const [form, setForm] = useState<Settings>({
     companyName: "", companyAddress1: "", companyAddress2: "", city: "", postcode: "",
     country: "", phone: "", cemail: "", website: "", vatNumber: "",
@@ -53,6 +64,18 @@ export default function SettingsPage() {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
+
+  if (status === "authenticated" && session?.user?.role !== "admin") {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <ShieldAlert size={40} className="text-red-400 mx-auto mb-3" />
+          <p className="text-gray-600 font-medium">Access Restricted</p>
+          <p className="text-sm text-gray-400 mt-1">Invoice Settings is for Admin users only.</p>
+        </div>
+      </div>
+    );
+  }
 
   const field = (key: keyof Settings, label: string, type = "text") => (
     <Input

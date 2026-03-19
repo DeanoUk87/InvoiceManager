@@ -3,32 +3,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  Search,
-  Printer,
-  FileX,
-  Upload,
-  FolderOpen,
-  Zap,
-  Settings,
-  Mail,
-  Download,
-  Archive,
-  ChevronDown,
-  ChevronRight,
-  User,
+  LayoutDashboard, Users, FileText, Search, Printer, FileX,
+  Upload, FolderOpen, Zap, Settings, Mail, Download, Archive,
+  ChevronDown, ChevronRight, User, ShieldAlert,
 } from "lucide-react";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   {
     label: "Account",
     icon: User,
+    adminOnly: false,
     children: [
-      { href: "/settings", label: "Invoice Settings", icon: Settings },
+      { href: "/settings", label: "Invoice Settings", icon: Settings, adminOnly: true },
     ],
   },
   { href: "/upload-csv", label: "Upload CSV", icon: Upload },
@@ -48,16 +37,28 @@ const archiveItems = [
   { href: "/archive/invoices", label: "Invoices (Archived)", icon: Archive },
 ];
 
+type NavItem = {
+  href?: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  adminOnly?: boolean;
+  children?: { href: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; adminOnly?: boolean }[];
+};
+
 interface NavItemProps {
-  item: typeof navItems[0];
+  item: NavItem;
   pathname: string;
+  role: string;
 }
 
-function NavItem({ item, pathname }: NavItemProps) {
+function NavItemComp({ item, pathname, role }: NavItemProps) {
   const [open, setOpen] = useState(false);
+  const isAdmin = role === "admin";
 
   if ("children" in item && item.children) {
-    const isActive = item.children.some((c) => pathname.startsWith(c.href));
+    const visibleChildren = item.children.filter(c => !c.adminOnly || isAdmin);
+    if (visibleChildren.length === 0) return null;
+    const isActive = visibleChildren.some((c) => pathname.startsWith(c.href));
     return (
       <div>
         <button
@@ -73,7 +74,7 @@ function NavItem({ item, pathname }: NavItemProps) {
         </button>
         {(open || isActive) && (
           <div className="ml-4 mt-1 space-y-1">
-            {item.children.map((child) => (
+            {visibleChildren.map((child) => (
               <Link
                 key={child.href}
                 href={child.href}
@@ -94,7 +95,9 @@ function NavItem({ item, pathname }: NavItemProps) {
     );
   }
 
-  if (!("href" in item)) return null;
+  if (!("href" in item) || !item.href) return null;
+  if (item.adminOnly && !isAdmin) return null;
+
   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
   return (
     <Link
@@ -114,6 +117,10 @@ function NavItem({ item, pathname }: NavItemProps) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = session?.user?.role ?? "user";
+  const isAdmin = role === "admin";
+
   return (
     <aside className="w-56 min-h-screen bg-white border-r border-gray-200 flex flex-col">
       {/* Logo */}
@@ -135,8 +142,29 @@ export function Sidebar() {
           System Menu
         </p>
         {navItems.map((item, i) => (
-          <NavItem key={i} item={item} pathname={pathname} />
+          <NavItemComp key={i} item={item as NavItem} pathname={pathname} role={role} />
         ))}
+
+        {/* Admin section - only for admins */}
+        {isAdmin && (
+          <>
+            <p className="px-3 mt-4 mb-2 text-[10px] font-semibold text-red-400 uppercase tracking-wider">
+              Admin
+            </p>
+            <Link
+              href="/admin"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                pathname === "/admin"
+                  ? "bg-red-600 text-white shadow-sm"
+                  : "text-red-600 hover:bg-red-50 hover:text-red-700"
+              )}
+            >
+              <ShieldAlert size={18} className="shrink-0" />
+              Admin Area
+            </Link>
+          </>
+        )}
 
         <p className="px-3 mt-4 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
           New Data Archives

@@ -1,29 +1,30 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { invoices, customers, sales, settings } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 
-  const invoice = await prisma.invoice.findUnique({ where: { id: parseInt(id) } });
+  const [invoice] = await db.select().from(invoices).where(eq(invoices.id, parseInt(id)));
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [customer, sales, settings] = await Promise.all([
-    prisma.customer.findFirst({ where: { customerAccount: invoice.customerAccount } }),
-    prisma.sale.findMany({
-      where: {
-        customerAccount: invoice.customerAccount,
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: invoice.invoiceDate ?? undefined,
-      },
-      orderBy: { id: "asc" },
-    }),
-    prisma.settings.findFirst(),
+  const conditions = [
+    eq(sales.customerAccount, invoice.customerAccount),
+    eq(sales.invoiceNumber, invoice.invoiceNumber),
+  ];
+  if (invoice.invoiceDate) conditions.push(eq(sales.invoiceDate, invoice.invoiceDate));
+
+  const [customer, saleRows, [sett]] = await Promise.all([
+    db.select().from(customers).where(eq(customers.customerAccount, invoice.customerAccount)).then(r => r[0] ?? null),
+    db.select().from(sales).where(and(...conditions)).orderBy(sales.id),
+    db.select().from(settings).limit(1),
   ]);
 
-  return NextResponse.json({ invoice, customer, sales, settings });
+  return NextResponse.json({ invoice, customer, sales: saleRows, settings: sett ?? null });
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -31,7 +32,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const data = await req.json();
-  const invoice = await prisma.invoice.update({ where: { id: parseInt(id) }, data });
+  const [invoice] = await db.update(invoices).set(data).where(eq(invoices.id, parseInt(id))).returning();
   return NextResponse.json(invoice);
 }
 
@@ -39,6 +40,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  await prisma.invoice.delete({ where: { id: parseInt(id) } });
+  await db.delete(invoices).where(eq(invoices.id, parseInt(id)));
   return NextResponse.json({ success: true });
 }

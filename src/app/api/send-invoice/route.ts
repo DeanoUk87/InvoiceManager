@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { invoices, sales, settings } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { eq, and } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
@@ -8,84 +10,27 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { invoiceId, email, bcc } = await req.json();
-  if (!invoiceId || !email) {
-    return NextResponse.json({ error: "Invoice ID and email are required" }, { status: 400 });
-  }
+  if (!invoiceId || !email) return NextResponse.json({ error: "Invoice ID and email required" }, { status: 400 });
 
-  const invoice = await prisma.invoice.findUnique({ where: { id: parseInt(invoiceId) } });
+  const [invoice] = await db.select().from(invoices).where(eq(invoices.id, parseInt(invoiceId)));
   if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
 
-  const [settings, sales] = await Promise.all([
-    prisma.settings.findFirst(),
-    prisma.sale.findMany({
-      where: {
-        customerAccount: invoice.customerAccount,
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: invoice.invoiceDate ?? undefined,
-      },
-    }),
-  ]);
+  const [sett] = await db.select().from(settings).limit(1);
+  const conds = [eq(sales.customerAccount, invoice.customerAccount), eq(sales.invoiceNumber, invoice.invoiceNumber)];
+  if (invoice.invoiceDate) conds.push(eq(sales.invoiceDate, invoice.invoiceDate));
+  const saleRows = await db.select().from(sales).where(and(...conds));
 
-  const subTotal = sales.reduce((s, r) => s + (r.subTotal ?? 0), 0);
-  const fuelSurcharge = subTotal * ((settings?.fuelSurchargePercent ?? 3.5) / 100);
-  const resourcingSurcharge = subTotal * ((settings?.resourcingSurchargePercent ?? 0) / 100);
+  const subTotal = saleRows.reduce((s, r) => s + (r.subTotal ?? 0), 0);
+  const fuelSurcharge = subTotal * ((sett?.fuelSurchargePercent ?? 3.5) / 100);
+  const resourcingSurcharge = subTotal * ((sett?.resourcingSurchargePercent ?? 0) / 100);
   const netTotal = subTotal + fuelSurcharge + resourcingSurcharge;
-  const vatAmount = netTotal * ((settings?.vatPercent ?? 20) / 100);
+  const vatAmount = netTotal * ((sett?.vatPercent ?? 20) / 100);
   const total = netTotal + vatAmount;
 
-  const lineItems = sales.map((s) =>
-    `<tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee">${s.jobDate ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee">${s.jobNumber ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee">${s.senderReference ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee">${s.postcode2 ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee">${s.destination ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee">${s.serviceType ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${s.items2 ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${s.volumeWeight ?? ""}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">£${(s.subTotal ?? 0).toFixed(2)}</td>
-    </tr>`
-  ).join("");
-
-  const subject = (settings?.messageTitle ?? "Invoice #{invoice_number}").replace("{invoice_number}", invoice.invoiceNumber);
-  const body = (settings?.defaultMessage2 ?? "Please find attached your invoice {invoice_number}.").replace("{invoice_number}", invoice.invoiceNumber);
-
-  const html = `
-    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto">
-      <div style="background:#2563eb;padding:20px;text-align:center">
-        <h2 style="color:white;margin:0">${settings?.companyName ?? "Invoice"}</h2>
-      </div>
-      <div style="padding:20px">
-        <p>${body.replace(/\n/g, "<br>")}</p>
-        <table style="width:100%;border-collapse:collapse;margin-top:20px">
-          <thead>
-            <tr style="background:#f3f4f6">
-              <th style="padding:8px;text-align:left">Job Date</th>
-              <th style="padding:8px;text-align:left">Job No.</th>
-              <th style="padding:8px;text-align:left">Ref</th>
-              <th style="padding:8px;text-align:left">Postcode</th>
-              <th style="padding:8px;text-align:left">Destination</th>
-              <th style="padding:8px;text-align:left">Service</th>
-              <th style="padding:8px;text-align:right">Items</th>
-              <th style="padding:8px;text-align:right">Weight</th>
-              <th style="padding:8px;text-align:right">Charge</th>
-            </tr>
-          </thead>
-          <tbody>${lineItems}</tbody>
-        </table>
-        <table style="width:300px;margin-left:auto;margin-top:16px">
-          <tr><td>Sub Total:</td><td style="text-align:right">£${subTotal.toFixed(2)}</td></tr>
-          <tr><td>Fuel Surcharge ${settings?.fuelSurchargePercent ?? 3.5}%:</td><td style="text-align:right">£${fuelSurcharge.toFixed(2)}</td></tr>
-          <tr><td>Resourcing Surcharge ${settings?.resourcingSurchargePercent ?? 0}%:</td><td style="text-align:right">£${resourcingSurcharge.toFixed(2)}</td></tr>
-          <tr><td>Net Total:</td><td style="text-align:right">£${netTotal.toFixed(2)}</td></tr>
-          <tr><td>VAT ${settings?.vatPercent ?? 20}%:</td><td style="text-align:right">£${vatAmount.toFixed(2)}</td></tr>
-          <tr style="font-weight:bold;color:#2563eb">
-            <td>TOTAL:</td><td style="text-align:right">£${total.toFixed(2)}</td>
-          </tr>
-        </table>
-      </div>
-    </div>
-  `;
+  const lineItems = saleRows.map(s => `<tr><td>${s.jobDate??''}</td><td>${s.jobNumber??''}</td><td>${s.senderReference??''}</td><td>${s.postcode2??''}</td><td>${s.destination??''}</td><td>${s.serviceType??''}</td><td>${s.items2??''}</td><td>${s.volumeWeight??''}</td><td>£${(s.subTotal??0).toFixed(2)}</td></tr>`).join('');
+  const subject = (sett?.messageTitle ?? 'Invoice {invoice_number}').replace('{invoice_number}', invoice.invoiceNumber);
+  const body = (sett?.defaultMessage2 ?? 'Please find your invoice {invoice_number}.').replace('{invoice_number}', invoice.invoiceNumber);
+  const html = `<div style="font-family:Arial,sans-serif"><h2>${sett?.companyName??''}</h2><p>${body.replace(/\n/g,'<br>')}</p><table border="1" style="border-collapse:collapse;width:100%"><thead><tr><th>Job Date</th><th>Job No.</th><th>Senders Ref</th><th>Postcode</th><th>Destination</th><th>Service</th><th>Items</th><th>Weight</th><th>Charge</th></tr></thead><tbody>${lineItems}</tbody></table><br><strong>Sub Total: £${subTotal.toFixed(2)}</strong><br><strong>Fuel Surcharge ${sett?.fuelSurchargePercent??3.5}%: £${fuelSurcharge.toFixed(2)}</strong><br><strong>Net Total: £${netTotal.toFixed(2)}</strong><br><strong>VAT ${sett?.vatPercent??20}%: £${vatAmount.toFixed(2)}</strong><br><strong style="color:#2563eb;font-size:16px">TOTAL: £${total.toFixed(2)}</strong></div>`;
 
   if (process.env.SMTP_PASS) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,37 +38,16 @@ export async function POST(req: Request) {
       host: process.env.SMTP_HOST ?? "smtp.gmail.com",
       port: parseInt(process.env.SMTP_PORT ?? "587"),
       secure: false,
-      auth: {
-        user: process.env.SMTP_USER ?? settings?.cemail ?? "",
-        pass: process.env.SMTP_PASS,
-      },
+      auth: { user: process.env.SMTP_USER ?? sett?.cemail ?? "", pass: process.env.SMTP_PASS },
     });
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mailOptions: any = {
-      from: `"${settings?.companyName}" <${settings?.cemail}>`,
-      to: email,
-      subject,
-      html,
-    };
+    const mailOptions: any = { from: `"${sett?.companyName}" <${sett?.cemail}>`, to: email, subject, html };
     if (bcc) mailOptions.bcc = bcc;
-
     await transporter.sendMail(mailOptions);
   }
 
-  // Mark as printed / sent
-  await prisma.invoice.update({
-    where: { id: invoice.id },
-    data: { printer: 2, emailStatus: 1 },
-  });
-
-  await prisma.sale.updateMany({
-    where: {
-      customerAccount: invoice.customerAccount,
-      invoiceNumber: invoice.invoiceNumber,
-    },
-    data: { msCreated: 1 },
-  });
+  await db.update(invoices).set({ printer: 2, emailStatus: 1 }).where(eq(invoices.id, invoice.id));
+  await db.update(sales).set({ msCreated: 1 }).where(and(eq(sales.customerAccount, invoice.customerAccount), eq(sales.invoiceNumber, invoice.invoiceNumber)));
 
   return NextResponse.json({ success: true, message: `Invoice sent to ${email}` });
 }

@@ -1,14 +1,12 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { uploadedCsv } from "@/db/schema";
 import { formatDate } from "@/lib/utils";
+import { eq, desc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export default async function UploadedCsvArchivePage() {
-  const uploads = await prisma.uploadedCsv.findMany({
-    where: { status: "archived" },
-    orderBy: { createdAt: "desc" },
-  });
-
+  const uploads = await db.select().from(uploadedCsv).where(eq(uploadedCsv.status, "archived")).orderBy(desc(uploadedCsv.createdAt));
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-gray-900">Uploaded CSV (Archived)</h1>
@@ -25,16 +23,14 @@ export default async function UploadedCsvArchivePage() {
           <tbody>
             {uploads.length === 0 ? (
               <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400">No archived CSV files</td></tr>
-            ) : (
-              uploads.map((u, i) => (
-                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium">{u.filename}</td>
-                  <td className="px-4 py-3">{u.rowCount}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatDate(u.createdAt.toISOString())}</td>
-                </tr>
-              ))
-            )}
+            ) : uploads.map((u, i) => (
+              <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
+                <td className="px-4 py-3 text-gray-500">{i + 1}</td>
+                <td className="px-4 py-3 font-medium">{u.filename}</td>
+                <td className="px-4 py-3">{u.rowCount}</td>
+                <td className="px-4 py-3 text-gray-500">{u.createdAt ? formatDate(u.createdAt.toISOString()) : "-"}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

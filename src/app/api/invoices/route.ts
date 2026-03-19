@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { invoices } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { eq, and, inArray, like, gte, lte, desc } from "drizzle-orm";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -11,25 +13,20 @@ export async function GET(req: Request) {
   const dateTo = searchParams.get("dateTo");
   const account = searchParams.get("account");
   const invoiceNo = searchParams.get("invoiceNo");
-  const status = searchParams.get("status"); // "printed" | "unprinted"
+  const status = searchParams.get("status");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {};
+  const conditions = [];
+  if (status === "printed") conditions.push(eq(invoices.printer, 2));
+  if (status === "unprinted") conditions.push(inArray(invoices.printer, [0, 1]));
+  if (account) conditions.push(like(invoices.customerAccount, `%${account}%`));
+  if (invoiceNo) conditions.push(like(invoices.invoiceNumber, `%${invoiceNo}%`));
+  if (dateFrom) conditions.push(gte(invoices.invoiceDate, dateFrom));
+  if (dateTo) conditions.push(lte(invoices.invoiceDate, dateTo));
 
-  if (status === "printed") where.printer = 2;
-  if (status === "unprinted") where.printer = { in: [0, 1] };
+  const result = await db.select().from(invoices)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(invoices.invoiceDate))
+    .limit(1000);
 
-  if (account) where.customerAccount = { contains: account };
-  if (invoiceNo) where.invoiceNumber = { contains: invoiceNo };
-  if (dateFrom && dateTo) {
-    where.invoiceDate = { gte: dateFrom, lte: dateTo };
-  }
-
-  const invoices = await prisma.invoice.findMany({
-    where,
-    orderBy: { invoiceDate: "desc" },
-    take: 1000,
-  });
-
-  return NextResponse.json(invoices);
+  return NextResponse.json(result);
 }

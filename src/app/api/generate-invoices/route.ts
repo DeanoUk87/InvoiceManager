@@ -51,9 +51,11 @@ export async function POST() {
       .map(s => {
         let dueDate: string | null = null;
         if (s.invoiceDate) {
-          const d = new Date(s.invoiceDate);
-          d.setDate(d.getDate() + (s.numb2 ?? dueDays));
-          dueDate = d.toISOString().split("T")[0];
+          const d = parseSafeDate(s.invoiceDate);
+          if (d) {
+            d.setDate(d.getDate() + (s.numb2 ?? dueDays));
+            dueDate = d.toISOString().split("T")[0];
+          }
         }
         return {
           customerAccount: s.customerAccount,
@@ -91,4 +93,24 @@ export async function POST() {
     console.error("Generate invoices error:", e);
     return NextResponse.json({ error: `Failed: ${String(e)}` }, { status: 500 });
   }
+}
+
+// Safely parse a date string in YYYY-MM-DD, DD/MM/YYYY, or MM/DD/YYYY format
+function parseSafeDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const clean = dateStr.trim();
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    const d = new Date(clean);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // DD/MM/YYYY
+  const dmY = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmY) {
+    const d = new Date(`${dmY[3]}-${dmY[2].padStart(2, "0")}-${dmY[1].padStart(2, "0")}`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Try native parse as last resort
+  const d = new Date(clean);
+  return isNaN(d.getTime()) ? null : d;
 }

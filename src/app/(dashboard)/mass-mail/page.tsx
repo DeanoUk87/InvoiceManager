@@ -18,10 +18,20 @@ export default function MassMailPage() {
   const handleSend = async () => {
     setSending(true);
     setResult(null);
-    const res = await fetch("/api/bulk-send", { method: "POST" });
-    const data = await res.json();
-    setResult(data);
-    setSending(false);
+    try {
+      const res = await fetch("/api/bulk-send", { method: "POST" });
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("application/json")) {
+        const txt = await res.text();
+        setResult({ success: false, message: `Server error (${res.status}): ${txt.substring(0, 200)}` });
+      } else {
+        setResult(await res.json());
+      }
+    } catch (e) {
+      setResult({ success: false, message: `Request failed: ${String(e)}` });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

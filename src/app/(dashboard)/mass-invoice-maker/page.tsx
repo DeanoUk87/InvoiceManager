@@ -19,11 +19,24 @@ export default function MassInvoiceMakerPage() {
   const [generateResult, setGenerateResult] = useState<BulkResult | null>(null);
   const [sendResult, setSendResult] = useState<BulkResult | null>(null);
 
+  const safeFetch = async (url: string): Promise<BulkResult> => {
+    try {
+      const res = await fetch(url, { method: "POST" });
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("application/json")) {
+        const txt = await res.text();
+        return { success: false, message: `Server error (${res.status}): ${txt.substring(0, 200)}` };
+      }
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: `Request failed: ${String(e)}` };
+    }
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     setGenerateResult(null);
-    const res = await fetch("/api/generate-invoices", { method: "POST" });
-    const data = await res.json();
+    const data = await safeFetch("/api/generate-invoices");
     setGenerateResult(data);
     setGenerating(false);
   };
@@ -31,8 +44,7 @@ export default function MassInvoiceMakerPage() {
   const handleBulkSend = async () => {
     setSending(true);
     setSendResult(null);
-    const res = await fetch("/api/bulk-send", { method: "POST" });
-    const data = await res.json();
+    const data = await safeFetch("/api/bulk-send");
     setSendResult(data);
     setSending(false);
   };

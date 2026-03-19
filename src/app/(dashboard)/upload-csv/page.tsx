@@ -13,17 +13,48 @@ export default function UploadCsvPage() {
     if (!file) return;
     setUploading(true);
     setResult(null);
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: form });
-    const data = await res.json();
-    setUploading(false);
-    if (data.success) {
-      setResult({ success: true, message: `Successfully imported ${data.rowCount} rows.`, rowCount: data.rowCount });
-      setFile(null);
-      if (fileRef.current) fileRef.current.value = "";
-    } else {
-      setResult({ success: false, message: data.error ?? "Upload failed" });
+
+    try {
+      const form = new FormData();
+      form.append("file", file);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+
+      let res: Response;
+      try {
+        res = await fetch("/api/upload", {
+          method: "POST",
+          body: form,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      let data: { success?: boolean; error?: string; rowCount?: number };
+      const contentType = res.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = { error: `Server error (${res.status}): ${text.substring(0, 200)}` };
+      }
+
+      if (data.success) {
+        setResult({ success: true, message: `Successfully imported ${data.rowCount} rows.`, rowCount: data.rowCount });
+        setFile(null);
+        if (fileRef.current) fileRef.current.value = "";
+      } else {
+        setResult({ success: false, message: data.error ?? "Upload failed" });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error
+        ? (err.name === "AbortError" ? "Upload timed out. Try a smaller file." : err.message)
+        : "Upload failed";
+      setResult({ success: false, message });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -69,30 +100,18 @@ export default function UploadCsvPage() {
           )}
 
           {result && (
-            <div
-              className={`flex items-start gap-3 p-4 rounded-lg border ${
-                result.success
-                  ? "bg-green-50 border-green-200"
-                  : "bg-red-50 border-red-200"
-              }`}
-            >
-              {result.success ? (
-                <CheckCircle size={18} className="text-green-600 shrink-0 mt-0.5" />
-              ) : (
-                <XCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
-              )}
+            <div className={`flex items-start gap-3 p-4 rounded-lg border ${result.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+              {result.success
+                ? <CheckCircle size={18} className="text-green-600 shrink-0 mt-0.5" />
+                : <XCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
+              }
               <p className={`text-sm ${result.success ? "text-green-700" : "text-red-700"}`}>
                 {result.message}
               </p>
             </div>
           )}
 
-          <Button
-            onClick={handleUpload}
-            disabled={!file}
-            loading={uploading}
-            className="w-full"
-          >
+          <Button onClick={handleUpload} disabled={!file} loading={uploading} className="w-full">
             <Upload size={16} />
             {uploading ? "Uploading..." : "Upload CSV"}
           </Button>

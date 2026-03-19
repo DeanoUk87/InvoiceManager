@@ -13,7 +13,7 @@ function adminOnly(session: any) {
 // GET: settings object, or ?action=users to list users
 export async function GET(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Unauthorized", v: "v2" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const action = searchParams.get("action");
 
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 // PUT: update settings OR create/update user
 export async function PUT(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Unauthorized", v: "v2" }, { status: 401 });
 
   const data = await req.json();
   const action = data.action;
@@ -76,7 +76,7 @@ export async function PUT(req: Request) {
 // DELETE: delete user OR clear invoice data
 export async function DELETE(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Unauthorized", v: "v2" }, { status: 401 });
   if (adminOnly(session)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const data = await req.json();
@@ -105,3 +105,5 @@ export async function DELETE(req: Request) {
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
+
+// VERSION: v2-$(date +%s)

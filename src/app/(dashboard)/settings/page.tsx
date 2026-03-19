@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   CheckCircle, ShieldAlert, Users, Plus, Pencil,
-  Trash2, AlertTriangle, RefreshCw, X, Eye, EyeOff, Settings
+  Trash2, AlertTriangle, RefreshCw, X, Eye, EyeOff, Settings,
+  Bold, Italic, Underline, List
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,8 @@ interface SettingsForm {
   city: string; postcode: string; country: string; phone: string;
   cemail: string; website: string; vatNumber: string;
   invoiceDueDate: number; messageTitle: string; defaultMessage: string;
-  defaultMessage2: string; sendLimit: number; fuelSurchargePercent: number;
+  defaultMessage2: string; invoiceDefaultMessage: string;
+  sendLimit: number; fuelSurchargePercent: number;
   resourcingSurchargePercent: number; vatPercent: number;
 }
 
@@ -34,6 +36,71 @@ const ROLE_COLOURS: Record<string, string> = {
   user: "bg-blue-100 text-blue-700",
 };
 
+// Rich text editor for invoice default message
+function InvoiceDefaultMessageEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  // Sync external value into editor only on mount
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const exec = (cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val);
+    editorRef.current?.focus();
+  };
+
+  const toolbarBtn = (title: string, icon: React.ReactNode, cmd: string, val?: string) => (
+    <button type="button" title={title} onMouseDown={e => { e.preventDefault(); exec(cmd, val); }}
+      className="p-1.5 rounded hover:bg-gray-200 text-gray-600 transition-colors">
+      {icon}
+    </button>
+  );
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <h2 className="text-base font-semibold text-gray-900 mb-1">Invoice Default Message</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        This message appears at the bottom of every invoice. If a customer has a specific message set,
+        it will appear above this one.
+      </p>
+      <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+        {/* Toolbar */}
+        <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 border-b border-gray-200">
+          {toolbarBtn("Bold", <Bold size={14} />, "bold")}
+          {toolbarBtn("Italic", <Italic size={14} />, "italic")}
+          {toolbarBtn("Underline", <Underline size={14} />, "underline")}
+          <div className="w-px h-5 bg-gray-300 mx-1" />
+          {toolbarBtn("Bullet list", <List size={14} />, "insertUnorderedList")}
+          {toolbarBtn("H2", <span className="text-xs font-bold">H2</span>, "formatBlock", "h2")}
+          {toolbarBtn("H3", <span className="text-xs font-bold">H3</span>, "formatBlock", "h3")}
+          <div className="w-px h-5 bg-gray-300 mx-1" />
+          {toolbarBtn("Align left", <span className="text-xs">≡</span>, "justifyLeft")}
+          {toolbarBtn("Align center", <span className="text-xs">☰</span>, "justifyCenter")}
+          <div className="flex-1" />
+          <button type="button" onClick={() => { if (editorRef.current) { editorRef.current.innerHTML = ""; onChange(""); } }}
+            className="text-xs text-gray-400 hover:text-red-500 px-2">Clear</button>
+        </div>
+        {/* Editable area */}
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={() => onChange(editorRef.current?.innerHTML ?? "")}
+          className="min-h-[120px] px-4 py-3 text-sm text-gray-700 focus:outline-none leading-relaxed"
+          style={{ wordBreak: "break-word" }}
+        />
+      </div>
+      <p className="text-xs text-gray-400 mt-2">
+        Supports bold, italic, underline, headings and bullet lists. HTML is stored and rendered on invoices.
+      </p>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -49,6 +116,7 @@ export default function SettingsPage() {
     companyName: "", companyAddress1: "", companyAddress2: "", city: "", postcode: "",
     country: "", phone: "", cemail: "", website: "", vatNumber: "",
     invoiceDueDate: 30, messageTitle: "", defaultMessage: "", defaultMessage2: "",
+    invoiceDefaultMessage: "",
     sendLimit: 50, fuelSurchargePercent: 3.5, resourcingSurchargePercent: 0, vatPercent: 20,
   });
   const [saving, setSaving] = useState(false);
@@ -198,6 +266,10 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+          <InvoiceDefaultMessageEditor
+            value={form.invoiceDefaultMessage}
+            onChange={(v: string) => setForm({ ...form, invoiceDefaultMessage: v })}
+          />
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-2">SMTP Configuration</h2>
             <p className="text-sm text-gray-500">Set <code className="bg-gray-100 px-1 rounded text-xs">SMTP_HOST</code>, <code className="bg-gray-100 px-1 rounded text-xs">SMTP_PORT</code>, <code className="bg-gray-100 px-1 rounded text-xs">SMTP_USER</code>, <code className="bg-gray-100 px-1 rounded text-xs">SMTP_PASS</code> in your environment.</p>

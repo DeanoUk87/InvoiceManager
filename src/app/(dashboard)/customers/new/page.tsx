@@ -15,6 +15,7 @@ export default function NewCustomerPage() {
     customerEmailBcc: "",
     customerPhone: "",
     termsOfPayment: "",
+    poNumber: "",
     customerMessage: "",
   });
 
@@ -71,6 +72,12 @@ export default function NewCustomerPage() {
             value={form.termsOfPayment}
             onChange={(e) => setForm({ ...form, termsOfPayment: e.target.value })}
             placeholder="e.g. 30 days from document date"
+          />
+          <Input
+            label="PO Number"
+            value={form.poNumber}
+            onChange={(e) => setForm({ ...form, poNumber: e.target.value })}
+            placeholder="Customer purchase order number"
           />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Customer Specific Message</label>

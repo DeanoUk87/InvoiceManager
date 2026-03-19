@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `invoice_default_message` text;

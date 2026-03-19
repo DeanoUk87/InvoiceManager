@@ -45,6 +45,8 @@ interface InvoiceData {
     customerAccount: string;
     customerEmail: string | null;
     customerEmailBcc: string | null;
+    poNumber: string | null;
+    customerMessage: string | null;
   } | null;
   sales: Sale[];
   settings: {
@@ -61,6 +63,7 @@ interface InvoiceData {
     fuelSurchargePercent: number;
     resourcingSurchargePercent: number;
     vatPercent: number;
+    invoiceDefaultMessage: string | null;
   } | null;
 }
 
@@ -257,7 +260,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Invoice No:</td><td className="font-bold text-gray-900">{invoice.invoiceNumber}</td></tr>
                 <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Invoice Date:</td><td className="text-gray-600">{formatDate(invoice.invoiceDate)}</td></tr>
                 <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Due Date:</td><td className="text-red-600 font-semibold">{invoice.dueDate ? formatDate(invoice.dueDate) : calcDueDate(invoice.invoiceDate, sales[0]?.numb2)}</td></tr>
-                {invoice.poNumber && <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">PO Number:</td><td className="text-gray-600">{invoice.poNumber}</td></tr>}
+                {(customer?.poNumber || invoice.poNumber) && <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">PO Number:</td><td className="text-gray-600">{customer?.poNumber || invoice.poNumber}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -333,16 +336,27 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
 
-        {/* Footer row */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        {/* Messages below totals */}
+        {(customer?.customerMessage || settings?.invoiceDefaultMessage) && (
+          <div className="border-t border-gray-100 pt-5 mt-2 space-y-3">
+            {customer?.customerMessage && (
+              <div className="text-sm text-gray-700 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: customer.customerMessage }} />
+            )}
+            {settings?.invoiceDefaultMessage && (
+              <div className="text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-3"
+                dangerouslySetInnerHTML={{ __html: settings.invoiceDefaultMessage }} />
+            )}
+          </div>
+        )}
+
+        {/* Status only */}
+        <div className="flex items-center pt-4 border-t border-gray-100 mt-4">
           <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
             invoice.printer === 2 ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
           }`}>
             {invoice.printer === 2 ? "Printed / Sent" : "Unprinted"}
           </span>
-          {customer?.customerEmail && (
-            <span className="text-xs text-gray-500">Email: {customer.customerEmail}</span>
-          )}
         </div>
       </div>
     </div>

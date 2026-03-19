@@ -16,6 +16,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
     customerEmailBcc: "",
     customerPhone: "",
     termsOfPayment: "",
+    poNumber: "",
     customerMessage: "",
   });
 
@@ -28,6 +29,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
         customerEmailBcc: d.customerEmailBcc ?? "",
         customerPhone: d.customerPhone ?? "",
         termsOfPayment: d.termsOfPayment ?? "",
+        poNumber: d.poNumber ?? "",
         customerMessage: d.customerMessage ?? "",
       }));
   }, [id]);
@@ -83,6 +85,12 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
             label="Terms of Payment"
             value={form.termsOfPayment}
             onChange={(e) => setForm({ ...form, termsOfPayment: e.target.value })}
+          />
+          <Input
+            label="PO Number"
+            value={form.poNumber}
+            onChange={(e) => setForm({ ...form, poNumber: e.target.value })}
+            placeholder="Customer purchase order number"
           />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

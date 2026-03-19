@@ -182,12 +182,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   .totals-table .grand-row td { border-top: 2px solid #2563eb; background: #eff6ff;
     font-size: 13px; font-weight: 700; color: #2563eb; padding: 8px 10px; border-radius: 0 0 6px 6px; }
 
-  /* Footer */
-  .footer { border-top: 1px solid #e5e7eb; padding-top: 14px; margin-top: 8px;
-    display: flex; justify-content: space-between; color: #64748b; font-size: 9.5px; }
-  .footer .bank-details { line-height: 1.7; }
-  .footer .thank-you { text-align: right; }
-  .footer .thank-you .big { font-size: 12px; font-weight: 700; color: #2563eb; }
+  /* Messages */
+  .msg-customer { font-size: 11px; color: #374151; line-height: 1.7; border-top: 1px solid #e5e7eb; padding-top: 14px; margin-top: 8px; }
+  .msg-default { font-size: 10.5px; color: #6b7280; line-height: 1.7; border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 8px; }
 
   .num { text-align: right; }
 
@@ -237,7 +234,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       <div class="section-label">Bill To</div>
       ${custName ? `<div class="bill-to-name">${custName}</div>` : `<div class="bill-to-name">${esc(invoice.customerAccount)}</div>`}
       <div class="bill-to-addr">${addrLines}</div>
-      ${customer?.customerEmail ? `<div style="margin-top:4px;color:#2563eb">${esc(customer.customerEmail)}</div>` : ""}
     </div>
     <div class="inv-details">
       <div class="section-label">Invoice Details</div>
@@ -246,7 +242,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         <tr><td>Invoice No:</td><td><strong>${esc(invoice.invoiceNumber)}</strong></td></tr>
         <tr><td>Invoice Date:</td><td>${fmtDate(invoice.invoiceDate)}</td></tr>
         <tr><td>Due Date:</td><td class="due-date">${dueDateStr}</td></tr>
-        ${invoice.poNumber ? `<tr><td>PO Number:</td><td>${esc(invoice.poNumber)}</td></tr>` : ""}
+        ${(customer?.poNumber || invoice.poNumber) ? `<tr><td>PO Number:</td><td>${esc(customer?.poNumber || invoice.poNumber)}</td></tr>` : ""}
       </table>
     </div>
   </div>
@@ -281,20 +277,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     </table>
   </div>
 
-  <!-- Footer -->
-  <div class="footer">
-    <div class="bank-details">
-      <strong>Payment Details</strong><br>
-      ${companyName}<br>
-      ${compEmail ? `Email: ${compEmail}<br>` : ""}
-      ${compPhone ? `Tel: ${compPhone}` : ""}
-    </div>
-    <div class="thank-you">
-      <div class="big">Thank You!</div>
-      <div>Payment due: ${dueDateStr}</div>
-      <div style="margin-top:6px;font-size:9px">Please quote invoice number <strong>${esc(invoice.invoiceNumber)}</strong> when paying</div>
-    </div>
-  </div>
+  <!-- Messages section -->
+  ${customer?.customerMessage ? `
+  <div style="border-top:1px solid #e5e7eb;margin-top:16px;padding-top:14px;font-size:11px;color:#374151;line-height:1.7">
+    ${customer.customerMessage}
+  </div>` : ""}
+  ${sett?.invoiceDefaultMessage ? `
+  <div style="border-top:1px solid #e5e7eb;margin-top:10px;padding-top:10px;font-size:10.5px;color:#6b7280;line-height:1.7">
+    ${sett.invoiceDefaultMessage}
+  </div>` : ""}
 
 </div>
 <script>window.onload = () => window.print();</script>

@@ -114,6 +114,7 @@ export const settings = sqliteTable("settings", {
   messageTitle: text("message_title"),
   defaultMessage: text("default_message"),
   defaultMessage2: text("default_message2"),
+  invoiceDefaultMessage: text("invoice_default_message"),
   sendLimit: integer("send_limit").default(50),
   fuelSurchargePercent: real("fuel_surcharge_percent").default(3.5),
   resourcingSurchargePercent: real("resourcing_surcharge_percent").default(0),

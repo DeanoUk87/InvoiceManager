@@ -1,13 +1,192 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      String   @default("user")
+  username  String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Customer {
+  id               Int      @id @default(autoincrement())
+  customerAccount  String   @unique @map("customer_account")
+  customerEmail    String?  @map("customer_email")
+  customerEmailBcc String?  @map("customer_email_bcc")
+  customerPhone    String?  @map("customer_phone")
+  termsOfPayment   String?  @map("terms_of_payment")
+  messageType      String?  @map("message_type")
+  poNumber         String?  @map("po_number")
+  customerMessage  String?  @map("customer_message")
+  loginAccess      Boolean  @default(false) @map("login_access")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("customers")
+}
+
+model Sale {
+  id                            Int      @id @default(autoincrement())
+  invoiceNumber                 String   @map("invoice_number")
+  invoiceDate                   String?  @map("invoice_date")
+  customerAccount               String   @map("customer_account")
+  customerName                  String?  @map("customer_name")
+  address1                      String?
+  address2                      String?
+  town                          String?
+  country                       String?
+  postcode                      String?
+  spacer1                       String?
+  customerAccount2              String?  @map("customer_account2")
+  numb1                         Float?
+  items                         Float?
+  weight                        Float?
+  invoiceTotal                  Float?   @map("invoice_total")
+  numb2                         Float?
+  spacer2                       String?
+  jobNumber                     String?  @map("job_number")
+  jobDate                       String?  @map("job_date")
+  sendingDepot                  String?  @map("sending_depot")
+  deliveryDepot                 String?  @map("delivery_depot")
+  destination                   String?
+  town2                         String?
+  postcode2                     String?
+  serviceType                   String?  @map("service_type")
+  items2                        Float?
+  volumeWeight                  Float?   @map("volume_weight")
+  numb3                         Float?
+  increasedLiabilityCover       Float?   @map("increased_liability_cover")
+  subTotal                      Float?   @map("sub_total")
+  spacer3                       String?
+  numb4                         Float?
+  senderReference               String?  @map("sender_reference")
+  numb5                         Float?
+  percentageFuelSurcharge       Float?   @map("percentage_fuel_surcharge")
+  percentageResourcingSurcharge Float?   @map("percentage_resourcing_surcharge")
+  spacer4                       String?
+  sendersPostcode               String?  @map("senders_postcode")
+  vatAmount                     Float?   @map("vat_amount")
+  vatPercent                    Float?   @map("vat_percent")
+  uploadCode                    String?  @map("upload_code")
+  msCreated                     Int      @default(0) @map("ms_created")
+  invoiceReady                  Int      @default(0) @map("invoice_ready")
+  uploadTs                      String?  @map("upload_ts")
+  createdAt                     DateTime @default(now())
+
+  @@map("sales")
+}
+
+model Invoice {
+  id              Int      @id @default(autoincrement())
+  salesId         Int?     @map("sales_id")
+  customerAccount String   @map("customer_account")
+  invoiceNumber   String   @map("invoice_number")
+  invoiceDate     String?  @map("invoice_date")
+  dueDate         String?  @map("due_date")
+  dateCreated     String?  @map("date_created")
+  terms           String?
+  printer         Int      @default(0) @map("printer")
+  poNumber        String?  @map("po_number")
+  num             Int?
+  emailStatus     Int      @default(0) @map("email_status")
+  batchNo         String?  @map("batch_no")
+  createdAt       DateTime @default(now())
+
+  @@map("invoices")
+}
+
+model Settings {
+  id                          Int    @id @default(autoincrement())
+  companyName                 String? @map("company_name")
+  logo                        String?
+  companyAddress1             String? @map("company_address1")
+  companyAddress2             String? @map("company_address2")
+  state                       String?
+  city                        String?
+  postcode                    String?
+  country                     String?
+  phone                       String?
+  fax                         String?
+  cemail                      String?
+  website                     String?
+  primaryContact              String? @map("primary_contact")
+  baseCurrency                String? @map("base_currency")
+  vatNumber                   String? @map("vat_number")
+  invoiceDueDate              Int?    @map("invoice_due_date")
+  invoiceDuePaymentBy         String? @map("invoice_due_payment_by")
+  messageTitle                String? @map("message_title")
+  defaultMessage              String? @map("default_message")
+  defaultMessage2             String? @map("default_message2")
+  sendLimit                   Int     @default(50) @map("send_limit")
+  fuelSurchargePercent        Float   @default(3.5) @map("fuel_surcharge_percent")
+  resourcingSurchargePercent  Float   @default(0) @map("resourcing_surcharge_percent")
+  vatPercent                  Float   @default(20) @map("vat_percent")
+
+  @@map("settings")
+}
+
+model UploadedCsv {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  uploadTs  String   @map("upload_ts")
+  rowCount  Int      @default(0) @map("row_count")
+  status    String   @default("uploaded")
+  createdAt DateTime @default(now())
+
+  @@map("uploaded_csv")
+}
+
+model SaleArchive {
+  id                            Int      @id @default(autoincrement())
+  invoiceNumber                 String   @map("invoice_number")
+  invoiceDate                   String?  @map("invoice_date")
+  customerAccount               String   @map("customer_account")
+  customerName                  String?  @map("customer_name")
+  address1                      String?
+  address2                      String?
+  town                          String?
+  country                       String?
+  postcode                      String?
+  jobNumber                     String?  @map("job_number")
+  jobDate                       String?  @map("job_date")
+  destination                   String?
+  town2                         String?
+  postcode2                     String?
+  serviceType                   String?  @map("service_type")
+  items2                        Float?
+  volumeWeight                  Float?   @map("volume_weight")
+  subTotal                      Float?   @map("sub_total")
+  senderReference               String?  @map("sender_reference")
+  percentageFuelSurcharge       Float?   @map("percentage_fuel_surcharge")
+  percentageResourcingSurcharge Float?   @map("percentage_resourcing_surcharge")
+  vatAmount                     Float?   @map("vat_amount")
+  vatPercent                    Float?   @map("vat_percent")
+  invoiceTotal                  Float?   @map("invoice_total")
+  archivedAt                    DateTime @default(now())
+
+  @@map("sales_archive")
+}
+
+model InvoiceArchive {
+  id              Int      @id @default(autoincrement())
+  customerAccount String   @map("customer_account")
+  invoiceNumber   String   @map("invoice_number")
+  invoiceDate     String?  @map("invoice_date")
+  dueDate         String?  @map("due_date")
+  printer         Int      @default(2)
+  emailStatus     Int      @default(1) @map("email_status")
+  archivedAt      DateTime @default(now())
+
+  @@map("invoices_archive")
 }

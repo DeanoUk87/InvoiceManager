@@ -5,7 +5,8 @@ import { Zap, Send, CheckCircle, AlertCircle, Mail, FileX } from "lucide-react";
 
 interface BulkResult {
   success: boolean;
-  message: string;
+  message?: string;
+  error?: string;
   generated?: number;
   sent?: number;
   noEmail?: number;
@@ -25,9 +26,14 @@ export default function MassInvoiceMakerPage() {
       const ct = res.headers.get("content-type") ?? "";
       if (!ct.includes("application/json")) {
         const txt = await res.text();
-        return { success: false, message: `Server error (${res.status}): ${txt.substring(0, 200)}` };
+        return { success: false, message: `Server error (${res.status}): ${txt.substring(0, 300)}` };
       }
-      return await res.json();
+      const data = await res.json();
+      // Normalise: if API returned { error: "..." } treat as failure with message
+      if (!res.ok && data.error && !data.message) {
+        return { success: false, message: data.error, ...data };
+      }
+      return data;
     } catch (e) {
       return { success: false, message: `Request failed: ${String(e)}` };
     }
@@ -88,7 +94,7 @@ export default function MassInvoiceMakerPage() {
                   <AlertCircle size={16} className="text-orange-600 mt-0.5 shrink-0" />
                 )}
                 <p className={`text-sm ${generateResult.success ? "text-green-700" : "text-orange-700"}`}>
-                  {generateResult.message}
+                  {generateResult.message || generateResult.error || "An error occurred. Please try again."}
                 </p>
               </div>
             </div>
@@ -125,7 +131,7 @@ export default function MassInvoiceMakerPage() {
                 }`}
               >
                 <p className={`text-sm ${sendResult.success ? "text-green-700" : "text-red-700"}`}>
-                  {sendResult.message}
+                  {sendResult.message || sendResult.error || "An error occurred. Please try again."}
                 </p>
               </div>
               {sendResult.results && sendResult.results.length > 0 && (

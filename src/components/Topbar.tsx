@@ -12,6 +12,11 @@ export function Topbar() {
       <div className="flex items-center gap-3">
         <h1 className="font-semibold text-sm">
           Welcome: <span className="font-bold">{session?.user?.name ?? "User"}</span>
+          {session?.user?.role === "admin" && (
+            <span className="ml-2 px-1.5 py-0.5 bg-white/20 rounded text-[10px] font-medium uppercase tracking-wide">
+              Admin
+            </span>
+          )}
         </h1>
       </div>
       <div className="flex items-center gap-3">

@@ -9,7 +9,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Invoice Manager",
+  title: "Invoice Manager v2",
   description: "Invoice management system",
 };
 

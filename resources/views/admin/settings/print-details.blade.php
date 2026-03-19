@@ -1,0 +1,86 @@
+
+<link rel="stylesheet" type="text/css" href="{{ asset('public/templates/admin/assets/css/reporting.css') }}"/>
+<h4>@lang('main.settings.title')</h4>
+<div class="vItems">
+    <table class="table table-bordered" cellspacing="0">
+        <tr>
+            <td>@lang('main.settings.field.company_name')</td>
+            <td>{{$settings->company_name}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.company_address1')</td>
+            <td>{{$settings->company_address1}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.company_address2')</td>
+            <td>{{$settings->company_address2}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.state')</td>
+            <td>{{$settings->state}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.city')</td>
+            <td>{{$settings->city}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.postcode')</td>
+            <td>{{$settings->postcode}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.country')</td>
+            <td>{{$settings->country}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.phone')</td>
+            <td>{{$settings->phone}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.fax')</td>
+            <td>{{$settings->fax}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.cemail')</td>
+            <td>{{$settings->cemail}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.website')</td>
+            <td>{{$settings->website}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.primary_contact')</td>
+            <td>{{$settings->primary_contact}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.base_currency')</td>
+            <td>{{$settings->base_currency}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.vat_number')</td>
+            <td>{{$settings->vat_number}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.invoice_due_date')</td>
+            <td>{{$settings->invoice_due_date}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.invoice_due_payment_by')</td>
+            <td>{{$settings->invoice_due_payment_by}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.message_title')</td>
+            <td>{{$settings->message_title}}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.default_message')</td>
+            <td>{!!$settings->default_message!!}</td>
+        </tr>
+       <tr>
+            <td>@lang('main.settings.field.default_message2')</td>
+            <td>{!!$settings->default_message2!!}</td>
+        </tr>
+       
+    </table>
+    
+</div>
+

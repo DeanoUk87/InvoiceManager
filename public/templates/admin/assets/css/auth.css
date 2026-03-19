@@ -1,0 +1,185 @@
+@import "https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800";
+body,
+html {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 400;
+  font-size: 0.9rem;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale; }
+
+.form-control,
+.form-control:focus {
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none; }
+
+.form-control {
+  box-shadow: none; }
+.p_input::-webkit-input-placeholder {
+  /* Chrome/Opera/Safari */
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 400; }
+.p_input::-moz-placeholder {
+  /* Firefox 19+ */
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 400; }
+.p_input:-ms-input-placeholder {
+  /* IE 10+ */
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 400; }
+.p_input:-moz-placeholder {
+  /* Firefox 18- */
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 400; }
+.content-wrapper {
+  background: #f2f7f8;
+  margin-left: 215px;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  transition: all .8s ease;
+  width: calc(100% - 215px); }
+  @media (max-width: 991px) {
+    .content-wrapper {
+      margin-left: 0;
+      width: 100%; } }
+  .content-wrapper.full-page-wrapper {
+    margin-left: 0;
+    width: 100%; }
+
+.container-scroller {
+  height: 100vh;
+  position: relative; }
+
+.card.card-social {
+  text-align: center; }
+  .card.card-social .highlight-icon {
+    font-size: 3.25rem; }
+
+.card {
+  border-color: rgba(33, 170, 237, 0.1); }
+  .card.card-rounded {
+    border-radius: 5px; }
+  .card.card-statistics .highlight-icon {
+    font-size: 3.125rem; }
+  .card.card-statistics .highlight-icon-small {
+    font-size: 2.5rem; }
+  .card.card-statistics p {
+    margin-bottom: 0; }
+  .card .fa-2x {
+    font-size: 1.4em; }
+.bg-blue {
+  background: #1991EB;
+}
+
+.card .card-body {
+  margin: 0
+}
+
+@media (max-width: 768px) {
+  .card .card-body {
+    margin: 3px -15px 10px -15px;
+  }
+}
+
+
+.auth-pages h3 {
+  font-family: "Gudea", sans-serif;
+  font-size: 23px;
+  font-weight: bold;
+  line-height: 1.3;
+  color: #000; }
+
+.auth-pages .form-control {
+  height: 48px;
+  border-radius: 3px;
+  background-color: #f2f7fa;
+  border: none; }
+
+.auth-pages .forgot-pass {
+  font-family: "Gudea", sans-serif;
+  font-size: 13px;
+  line-height: 2.31;
+  text-align: right;
+  color: #1c2c3f; }
+
+.auth-pages button {
+  font-family: "Gudea", sans-serif;
+  font-size: 15px;
+  text-align: center;
+  color: #ffffff;
+  border: none; }
+  .auth-pages button.enter-btn {
+    height: 39px;
+    background-image: -webkit-gradient(linear, left top, right top, from(#318be3), to(#04befe));
+    background-image: linear-gradient(to right, #318be3, #04befe); }
+
+.auth-pages .Or-login-with {
+  font-family: Gudea;
+  font-size: 15px;
+  line-height: 2;
+  text-align: center;
+  color: #737475; }
+
+.auth-pages a.btn {
+  height: 39px;
+  font-family: Gudea; }
+
+.auth-pages a.btn-facebook {
+  background-color: #3f51b5;
+  color: #ffffff;
+  border: none;
+  line-height: 1.88;
+  position: relative; }
+  .auth-pages a.btn-facebook:before {
+    font: normal normal normal 14px/1 FontAwesome;
+    font-size: 14px;
+    font-size: inherit;
+    text-rendering: auto;
+    content: "\f09a";
+    display: inline;
+    position: absolute;
+    top: 10px;
+    left: 16px;
+    font-size: 20px; }
+
+.auth-pages a.btn-twitter {
+  background-color: #3eb1d0;
+  color: #ffffff;
+  border: none;
+  line-height: 1.88;
+  position: relative; }
+  .auth-pages a.btn-twitter:before {
+    font: normal normal normal 14px/1 FontAwesome;
+    font-size: 14px;
+    font-size: inherit;
+    text-rendering: auto;
+    content: "\f099";
+    display: inline;
+    position: absolute;
+    top: 10px;
+    left: 16px;
+    font-size: 20px; }
+
+.auth-pages a.btn-google {
+  background-color: #d62728;
+  color: #ffffff;
+  border: none;
+  line-height: 1.88;
+  position: relative; }
+.auth-pages a.btn-google:before {
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: 14px;
+  font-size: inherit;
+  text-rendering: auto;
+  content: "\f1a0";
+  display: inline;
+  position: absolute;
+  top: 10px;
+  left: 16px;
+  font-size: 20px; }
+
+.auth-pages a.btn-create-account {
+  background: #ffffff;
+  border: solid 1px #ebebeb;
+  color: #1c2c3f; }
+
+.help-block{color: #d62728;}

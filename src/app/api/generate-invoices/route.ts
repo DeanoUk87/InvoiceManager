@@ -49,14 +49,7 @@ export async function POST() {
     const toInsert = unique
       .filter(s => !existingSet.has(`${s.invoiceNumber}|${s.customerAccount}|${s.invoiceDate}`))
       .map(s => {
-        let dueDate: string | null = null;
-        if (s.invoiceDate) {
-          const d = parseSafeDate(s.invoiceDate);
-          if (d) {
-            d.setDate(d.getDate() + (s.numb2 ?? dueDays));
-            dueDate = d.toISOString().split("T")[0];
-          }
-        }
+        const dueDate = calcDueDateISO(s.invoiceDate, s.numb2 ?? dueDays);
         return {
           customerAccount: s.customerAccount,
           invoiceNumber: s.invoiceNumber,
@@ -95,22 +88,14 @@ export async function POST() {
   }
 }
 
-// Safely parse a date string in YYYY-MM-DD, DD/MM/YYYY, or MM/DD/YYYY format
-function parseSafeDate(dateStr: string): Date | null {
-  if (!dateStr) return null;
-  const clean = dateStr.trim();
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    const d = new Date(clean);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  // DD/MM/YYYY
-  const dmY = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (dmY) {
-    const d = new Date(`${dmY[3]}-${dmY[2].padStart(2, "0")}-${dmY[1].padStart(2, "0")}`);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  // Try native parse as last resort
-  const d = new Date(clean);
-  return isNaN(d.getTime()) ? null : d;
+/** Calculate due date as YYYY-MM-DD using UTC to avoid timezone shifts */
+function calcDueDateISO(invoiceDate: string | null | undefined, days: number): string | null {
+  if (!invoiceDate) return null;
+  const clean = invoiceDate.trim();
+  const m = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const base = new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
+  if (isNaN(base.getTime())) return null;
+  base.setUTCDate(base.getUTCDate() + Math.round(days));
+  return base.toISOString().split("T")[0];
 }

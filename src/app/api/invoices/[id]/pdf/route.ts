@@ -8,6 +8,25 @@ function fmt(n: number) { return n.toFixed(2); }
 function esc(s: string | null | undefined) {
   return (s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
+/** Format YYYY-MM-DD as DD/MM/YYYY without timezone conversion */
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return "";
+  const m = d.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return d;
+}
+/** Calculate due date as DD/MM/YYYY */
+function calcDue(invoiceDate: string | null | undefined, days: number | null | undefined): string {
+  if (!invoiceDate || days == null) return "";
+  const m = invoiceDate.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return "";
+  const base = new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
+  if (isNaN(base.getTime())) return "";
+  base.setUTCDate(base.getUTCDate() + Math.round(days));
+  const d = base.getUTCDate().toString().padStart(2, "0");
+  const mo = (base.getUTCMonth() + 1).toString().padStart(2, "0");
+  return `${d}/${mo}/${base.getUTCFullYear()}`;
+}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -66,11 +85,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const compEmail = esc(sett?.cemail ?? "");
   const vatNo = esc(sett?.vatNumber ?? "");
 
-  const dueDate = invoice.dueDate ?? "";
+  // Use numb2 (days) from first sale row to calculate due date
+  const numb2 = saleRows[0]?.numb2 ?? null;
+  const dueDateStr = invoice.dueDate
+    ? fmtDate(invoice.dueDate)
+    : calcDue(invoice.invoiceDate, numb2);
 
   const lineItems = saleRows.map((s, i) => `
     <tr class="${i % 2 === 0 ? "row-even" : "row-odd"}">
-      <td>${esc(s.jobDate)}</td>
+      <td>${fmtDate(s.jobDate)}</td>
       <td>${esc(s.jobNumber)}</td>
       <td>${esc(s.senderReference)}</td>
       <td>${esc(s.postcode2)}</td>
@@ -208,8 +231,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       <table>
         <tr><td>Account:</td><td>${esc(invoice.customerAccount)}</td></tr>
         <tr><td>Invoice No:</td><td><strong>${esc(invoice.invoiceNumber)}</strong></td></tr>
-        <tr><td>Invoice Date:</td><td>${esc(invoice.invoiceDate ?? "")}</td></tr>
-        <tr><td>Due Date:</td><td class="due-date">${esc(dueDate)}</td></tr>
+        <tr><td>Invoice Date:</td><td>${fmtDate(invoice.invoiceDate)}</td></tr>
+        <tr><td>Due Date:</td><td class="due-date">${dueDateStr}</td></tr>
         ${invoice.poNumber ? `<tr><td>PO Number:</td><td>${esc(invoice.poNumber)}</td></tr>` : ""}
       </table>
     </div>
@@ -255,7 +278,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     </div>
     <div class="thank-you">
       <div class="big">Thank You!</div>
-      <div>Payment due: ${esc(dueDate)}</div>
+      <div>Payment due: ${dueDateStr}</div>
       <div style="margin-top:6px;font-size:9px">Please quote invoice number <strong>${esc(invoice.invoiceNumber)}</strong> when paying</div>
     </div>
   </div>

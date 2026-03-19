@@ -1,6 +1,6 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, calcDueDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText, Mail, Printer, Download } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +28,7 @@ interface Sale {
   town: string | null;
   country: string | null;
   postcode: string | null;
+  numb2: number | null;
 }
 
 interface InvoiceData {
@@ -254,7 +255,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Account:</td><td className="text-gray-600">{invoice.customerAccount}</td></tr>
                 <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Invoice No:</td><td className="font-bold text-gray-900">{invoice.invoiceNumber}</td></tr>
                 <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Invoice Date:</td><td className="text-gray-600">{formatDate(invoice.invoiceDate)}</td></tr>
-                <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Due Date:</td><td className="text-red-600 font-semibold">{formatDate(invoice.dueDate)}</td></tr>
+                <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">Due Date:</td><td className="text-red-600 font-semibold">{invoice.dueDate ? formatDate(invoice.dueDate) : calcDueDate(invoice.invoiceDate, sales[0]?.numb2)}</td></tr>
                 {invoice.poNumber && <tr><td className="font-semibold text-gray-700 py-0.5 pr-3">PO Number:</td><td className="text-gray-600">{invoice.poNumber}</td></tr>}
               </tbody>
             </table>

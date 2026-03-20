@@ -6,6 +6,10 @@ const basePath = process.env.BASE_PATH ?? "";
 
 const nextConfig: NextConfig = {
   basePath,
+  // Standalone output bundles everything needed into .next/standalone
+  // allowing the app to run with just: node .next/standalone/server.js
+  // No npm install needed on the server.
+  output: "standalone",
   // Expose basePath to client components via env
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,

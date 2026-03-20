@@ -164,15 +164,27 @@ export default function SettingsPage() {
     if (!userForm.email) { setUserError("Email is required."); return; }
     if (!editUser && !userForm.password) { setUserError("Password is required."); return; }
     setUserSaving(true);
-    const res = await fetch("/api/settings", {
-      method: editUser ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: editUser ? "update-user" : "create-user", userId: editUser?.id, ...userForm }),
-    });
-    const data = await res.json();
-    setUserSaving(false);
-    if (!res.ok) { setUserError(data.error ?? "Save failed"); return; }
-    setShowModal(false); loadUsers();
+    try {
+      const res = await fetch("/api/settings", {
+        method: editUser ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: editUser ? "update-user" : "create-user", userId: editUser?.id, ...userForm }),
+      });
+      const ct = res.headers.get("content-type") ?? "";
+      let data: Record<string, string> = {};
+      if (ct.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const txt = await res.text();
+        data = { error: `Server error (${res.status}): ${txt.substring(0, 200)}` };
+      }
+      setUserSaving(false);
+      if (!res.ok || data.error) { setUserError(data.error ?? "Save failed"); return; }
+      setShowModal(false); loadUsers();
+    } catch (e) {
+      setUserSaving(false);
+      setUserError(`Request failed: ${String(e)}`);
+    }
   };
 
   const handleDeleteUser = async (u: User) => {

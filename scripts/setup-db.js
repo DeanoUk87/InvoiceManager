@@ -1,69 +1,87 @@
 #!/usr/bin/env node
 /**
  * Database setup script for self-hosted deployments.
- * Run once: node scripts/setup-db.js
- * Uses @libsql/client - no native compilation needed.
+ * Run once after deployment: node scripts/setup-db.js
+ * Or add to your start command: node scripts/setup-db.js && bun start
  */
-
 const path = require("path");
 const fs = require("fs");
+const Database = require("better-sqlite3");
+const bcrypt = require("bcryptjs");
 
 const dbUrl = process.env.DATABASE_URL || "file:./data/invoice.db";
 if (!dbUrl.startsWith("file:")) {
-  console.log("Not a local SQLite database - skipping local setup.");
+  console.log("Not a local SQLite database, skipping setup.");
   process.exit(0);
 }
 
-// Ensure data directory exists
 const dbPath = path.resolve(process.cwd(), dbUrl.replace(/^file:/, ""));
 const dir = path.dirname(dbPath);
 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
 console.log(`Setting up database at: ${dbPath}`);
+const db = new Database(dbPath);
+db.pragma("journal_mode = WAL");
 
-// Use @libsql/client (pure JS - works on any server, no compilation needed)
-const { createClient } = require("@libsql/client");
-const client = createClient({ url: dbUrl });
+// Read and apply the migration SQL
+const migrationPath = path.join(__dirname, "../src/db/migrations/0000_romantic_butterfly.sql");
+const migration1Path = path.join(__dirname, "../src/db/migrations/0001_fantastic_wither.sql");
 
-async function run() {
-  // Read and apply the SQL setup file
-  const sqlFile = path.join(__dirname, "../setup-database.sql");
-  if (!fs.existsSync(sqlFile)) {
-    console.error("setup-database.sql not found!");
-    process.exit(1);
-  }
-
-  const sql = fs.readFileSync(sqlFile, "utf8");
-  // Split on semicolons, skip comments and empty statements
-  const statements = sql
-    .split(";")
-    .map(s => s.replace(/--[^\n]*/g, "").trim())
-    .filter(s => s.length > 0);
-
+function applyMigration(sqlPath) {
+  if (!fs.existsSync(sqlPath)) return;
+  const sql = fs.readFileSync(sqlPath, "utf8");
+  const statements = sql.split(";").map(s => s.trim()).filter(s => s.length > 0);
   for (const stmt of statements) {
-    try {
-      await client.execute(stmt);
-    } catch (e) {
-      const msg = e.message || "";
-      if (!msg.includes("already exists") && !msg.includes("UNIQUE constraint")) {
-        console.warn("Warning:", msg.substring(0, 120));
+    try { db.exec(stmt + ";"); } catch (e) {
+      // Ignore "already exists" errors on re-run
+      if (!e.message.includes("already exists") && !e.message.includes("duplicate")) {
+        console.warn("Migration warning:", e.message.substring(0, 100));
       }
     }
   }
-
-  console.log("Database schema ready.");
-
-  // Verify admin user was created
-  const result = await client.execute("SELECT email, role FROM users WHERE role='admin' LIMIT 1");
-  if (result.rows.length > 0) {
-    console.log("\nAdmin user ready:");
-    console.log("  Email:    admin@invoicemanager.com");
-    console.log("  Password: Admin123!");
-    console.log("  ⚠️  Change this after first login via Admin & Settings > User Management\n");
-  }
-
-  await client.close();
-  console.log("✅ Setup complete. Run: npm run build && npm start");
 }
 
-run().catch(e => { console.error("Setup failed:", e.message); process.exit(1); });
+applyMigration(migrationPath);
+applyMigration(migration1Path);
+
+// Handle additional migrations
+const migrationsDir = path.join(__dirname, "../src/db/migrations");
+const migrationFiles = fs.readdirSync(migrationsDir)
+  .filter(f => f.endsWith(".sql"))
+  .sort();
+for (const file of migrationFiles) {
+  applyMigration(path.join(migrationsDir, file));
+}
+
+console.log("Database schema ready.");
+
+// Seed admin user if none exists
+const adminEmail = process.env.ADMIN_EMAIL || "admin@invoicemanager.com";
+const adminPassword = process.env.ADMIN_PASSWORD || "ChangeMe123!";
+const companyName = process.env.COMPANY_NAME || "Your Company Ltd";
+
+const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
+if (!existingAdmin) {
+  const hashed = bcrypt.hashSync(adminPassword, 10);
+  const id = `admin-${Date.now()}`;
+  db.prepare("INSERT INTO users (id, name, email, password, role, username) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(id, "Admin", adminEmail, hashed, "admin", "admin");
+  console.log(`\nAdmin user created:`);
+  console.log(`  Email: ${adminEmail}`);
+  console.log(`  Password: ${adminPassword}`);
+  console.log(`  ⚠️  Change this password after first login!\n`);
+} else {
+  console.log("Admin user already exists.");
+}
+
+// Seed default settings if none exist
+const existingSettings = db.prepare("SELECT id FROM settings LIMIT 1").get();
+if (!existingSettings) {
+  db.prepare(`INSERT INTO settings (company_name, cemail, send_limit, fuel_surcharge_percent, resourcing_surcharge_percent, vat_percent)
+    VALUES (?, ?, 50, 3.5, 0, 20)`)
+    .run(companyName, adminEmail);
+  console.log(`Settings created for: ${companyName}`);
+}
+
+db.close();
+console.log("\n✅ Setup complete. You can now start the application.");

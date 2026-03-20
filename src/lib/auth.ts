@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
+const basePath = process.env.BASE_PATH ?? "";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     CredentialsProvider({
@@ -12,8 +14,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        // Import db lazily inside the function so it only runs at request time
-        // (not at module load / build time when DB_URL/DB_TOKEN aren't available)
         const { db } = await import("@/db");
         const { users } = await import("@/db/schema");
         const { eq } = await import("drizzle-orm");
@@ -42,8 +42,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
-  pages: { signIn: "/login" },
+  // basePath prefix applied to the login page path
+  pages: { signIn: `${basePath}/login` },
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET ?? "invoice-manager-secret-key-2024",
   trustHost: true,
+  basePath: basePath ? `${basePath}/api/auth` : "/api/auth",
 });

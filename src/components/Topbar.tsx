@@ -1,5 +1,6 @@
 "use client";
 import { signOut, useSession } from "next-auth/react";
+import { withBase } from "@/lib/basepath";
 import { LogOut, User, Bell } from "lucide-react";
 import { useState } from "react";
 
@@ -42,7 +43,7 @@ export function Topbar() {
                 </span>
               </div>
               <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => signOut({ callbackUrl: withBase("/login") })}
                 className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
               >
                 <LogOut size={14} />

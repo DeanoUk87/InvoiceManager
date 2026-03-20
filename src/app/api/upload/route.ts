@@ -84,13 +84,21 @@ export async function POST(req: Request) {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length === 0) return NextResponse.json({ error: "Empty file" }, { status: 400 });
 
-    // Parse rows - no header row in this CSV format
+    // Auto-detect CSV format by column count:
+    //   40 cols = standard format (has percentage_resourcing_surcharge at col39)
+    //   39 cols = short format   (missing percentage_resourcing_surcharge, defaults to 0)
+    // Both formats are identical for cols 0-38.
+
     const rows: RowValue[][] = [];
     for (const line of lines) {
       const cols = parseCSVLine(line);
       if (cols.length < 3) continue;
       const customerAccount = cols[2]?.trim() ?? "";
       if (!customerAccount) continue;
+
+      // Col 39 only exists in the 40-column format; default to 0 for 39-column format
+      const resourcingSurcharge = cols.length >= 40 ? toFloat(cols[39]) : 0;
+
       rows.push([
         cols[0]?.trim() || null,
         parseDate(cols[1]),
@@ -131,7 +139,7 @@ export async function POST(req: Request) {
         cols[36]?.trim() || null,  // col36 = senders_postcode
         toFloat(cols[37]),          // col37 = vat_amount
         toFloat(cols[38]),          // col38 = vat_percent
-        toFloat(cols[39]),          // col39 = percentage_resourcing_surcharge
+        resourcingSurcharge,        // col39 = percentage_resourcing_surcharge (0 if absent)
       ]);
     }
 

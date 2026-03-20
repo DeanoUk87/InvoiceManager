@@ -14,7 +14,9 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
-  serverExternalPackages: ["bcryptjs", "nodemailer"],
+  // nodemailer stays external (server-only, not needed in bundle)
+  // bcryptjs is bundled so standalone output includes it
+  serverExternalPackages: ["nodemailer"],
 };
 
 export default nextConfig;
